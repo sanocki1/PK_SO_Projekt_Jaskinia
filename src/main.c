@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -28,20 +29,35 @@ int main(int argc, char* argv[]) {
 
     state->Tp = atoi(argv[1]);
     state->Tk = atoi(argv[2]);
+    state->closing = 0;
 
-    int guardPid = fork();
+    pid_t guardPid = fork();
     if (guardPid == -1) {
-        perror("fork");
+        perror("guard fork");
     }
     if (guardPid == 0) {
         execl("./guard", "guard", shmidStr, NULL);
-        perror("execl failed");
+        perror("guard execl failed");
     }
 
-    wait(nullptr);
+    pid_t cashierPid = fork();
+    if (cashierPid == -1) {
+        perror("cashier fork");
+    }
+    if (cashierPid == 0) {
+        execl("./cashier", "cashier", shmidStr, NULL);
+        perror("cashier execl failed");
+    }
+
+    while (wait(nullptr) > 0) {}
+    // if (errno != ECHILD) {
+    //     perror("wait");
+    // }
+
 
     shmdt(state);
     shmctl(shmid, IPC_RMID, nullptr);
 
+    PRINT("Finishing...");
     return 0;
 }

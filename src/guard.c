@@ -6,14 +6,8 @@
 #include "config.h"
 #include "shared.h"
 
-
 int main(int argc, char* argv[]) {
     PRINT("I'm the guard!");
-
-    if (argc != 2) {
-        PRINT("Wrong number of arguments in the guard process");
-        return 1;
-    }
 
     int shmid = atoi(argv[1]);
     sharedState* state = shmat(shmid, nullptr, 0);
@@ -32,9 +26,11 @@ int main(int argc, char* argv[]) {
     PRINT("Tour is open!");
     PRINT("Tour will close in %d seconds", secondsOpen);
     sleep(secondsOpen);
+    state->closing = 1;
     PRINT("Tour is closed!");
 
     shmdt(state);
 
+    PRINT("Finishing...");
     return 0;
 }
