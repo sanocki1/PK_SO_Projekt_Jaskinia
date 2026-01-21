@@ -2,18 +2,17 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/shm.h>
+#include <signal.h>
 #include "logger.h"
 #include "config.h"
-#include "shared.h"
+#include "utils.h"
 
 int main(int argc, char* argv[]) {
     PRINT("I'm the guard!");
 
-    int shmid = atoi(argv[1]);
-    sharedState* state = shmat(shmid, nullptr, 0);
-    if (state == (sharedState*)-1) {
-        perror("shmat");
-    }
+    key_t shmKey = generateKey(SHM_KEY);
+    int shmid = getShmid(shmKey, 0);
+    sharedState* state = getSharedMemory(shmid);
 
     int Tp = state->Tp;
     int Tk = state->Tk;
@@ -23,12 +22,15 @@ int main(int argc, char* argv[]) {
     }
     int secondsOpen = (Tk - Tp) * SECONDS_PER_HOUR;
 
+    pid_t cashierPid = atoi(argv[1]);
+
     PRINT("Tour is open!");
     PRINT("Tour will close in %d seconds", secondsOpen);
     sleep(secondsOpen);
     state->closing = 1;
     PRINT("Tour is closed!");
 
+    kill(cashierPid, SIGINT);
     shmdt(state);
 
     PRINT("Finishing...");
