@@ -13,9 +13,7 @@ static sharedState* state;
 
 void handleSigint(int sig) {
     PRINT("Caught SIGINT, terminating cashier...");
-    if (shmdt(state) == -1) {
-        PRINT_ERR("shmdt");
-    }
+    deattachSharedMemory(state);
     exit(0);
 }
 
@@ -30,12 +28,12 @@ int main(int argc, char* argv[]) {
     int shmid = getShmid(shmKey, 0);
     state = getSharedMemory(shmid);
 
-    key_t msgKey = generateKey(VISITOR_CASHIER_MSG);
-    int msgQueueId = getMsgQueueId(msgKey, 0);
+    key_t visitorCashierMsgKey = generateKey(VISITOR_CASHIER_QUEUE);
+    int visitorCashierMsgQueueId = getMsgQueueId(visitorCashierMsgKey, 0);
 
     while (1) {
         TicketMessage msg;
-        if (msgrcv(msgQueueId, &msg, sizeof(TicketMessage) - sizeof(long), 1, 0) == -1) {
+        if (msgrcv(visitorCashierMsgQueueId, &msg, sizeof(TicketMessage) - sizeof(long), 0, 0) == -1) {
             PRINT_ERR("msgrcv");
             continue;
         }

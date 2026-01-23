@@ -4,19 +4,27 @@
 #include <unistd.h>
 #include <sys/msg.h>
 #include <sys/wait.h>
-#include <sys/sem.h>
+#include <semaphore.h>
+#include <sys/types.h>
 #include <sys/shm.h>
 #include "config.h"
 #include "logger.h"
 #include "utils.h"
+#include <sys/types.h>
+#include <sys/ipc.h>
+#include <sys/sem.h>
+
 
 int main(int argc, char* argv[]) {
     PRINT("I'm the main process!");
 
     if (argc != 3) {
-        PRINT("Wrong number of arguments in the main process");
+        PRINT_ERR("Wrong number of arguments in the main process");
         return 1;
     }
+
+    // key_t semKey = generateKey(TEST_SEMAPHORE);
+    // int sem = semget(semKey, 1, IPC_CREAT | 0600);
 
     key_t shmKey = generateKey(SHM_KEY);
     int shmid = getShmid(shmKey, IPC_CREAT | 0600);
@@ -26,8 +34,11 @@ int main(int argc, char* argv[]) {
     state->Tk = atoi(argv[2]);
     state->closing = 0;
 
-    key_t msgKey = generateKey(VISITOR_CASHIER_MSG);
-    int msgQueueId = getMsgQueueId(msgKey, IPC_CREAT | 0600);
+    key_t visitorCashierMsgKey = generateKey(VISITOR_CASHIER_QUEUE);
+    int visitorCashierMsgQueueId = getMsgQueueId(visitorCashierMsgKey, IPC_CREAT | 0600);
+
+    key_t visitorGuideMsgKey = generateKey(VISITOR_GUIDE_QUEUE);
+    int visitorGuideMsgQueueId = getMsgQueueId(visitorGuideMsgKey, IPC_CREAT | 0600);
 
     pid_t cashierPid = fork();
     if (cashierPid == -1) {
@@ -40,6 +51,15 @@ int main(int argc, char* argv[]) {
 
     char cashierPidStr[16];
     snprintf(cashierPidStr, sizeof(cashierPidStr), "%d", cashierPid);
+
+    pid_t guidePid = fork();
+    if (guidePid == -1) {
+        PRINT_ERR("guide fork");
+    }
+    if (guidePid == 0) {
+        execl("./guide", "guide", NULL);
+        PRINT_ERR("guide execl failed");
+    }
 
     pid_t guardPid = fork();
     if (guardPid == -1) {
@@ -64,17 +84,10 @@ int main(int argc, char* argv[]) {
 
     while (wait(nullptr) > 0) {}
 
-    if (msgctl(msgQueueId, IPC_RMID, nullptr) == -1) {
-        PRINT_ERR("msgctl");
-    }
-
-    if (shmdt(state) == -1) {
-        PRINT_ERR("shmdt");
-    }
-
-    if (shmctl(shmid, IPC_RMID, nullptr) == -1) {
-        PRINT_ERR("shmctl");
-    }
+    destroyMsgQueue(visitorCashierMsgQueueId);
+    destroyMsgQueue(visitorGuideMsgQueueId);
+    deattachSharedMemory(state);
+    destroySharedMemory(shmid);
 
     PRINT("Finishing...");
     return 0;

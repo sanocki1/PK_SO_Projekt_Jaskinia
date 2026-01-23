@@ -42,3 +42,24 @@ int getMsgQueueId(key_t msgKey, int flag) {
     }
     return msgQueueId;
 }
+
+void destroyMsgQueue(int msgQueueId) {
+    if (msgctl(msgQueueId, IPC_RMID, nullptr) == -1) {
+        PRINT_ERR("msgctl");
+        exit(1);
+    }
+}
+
+void deattachSharedMemory(sharedState* state) {
+    if (shmdt(state) == -1) {
+        PRINT_ERR("shmdt");
+        exit(1);
+    }
+}
+
+void destroySharedMemory(int shmid) {
+    if (shmctl(shmid, IPC_RMID, nullptr) == -1) {
+        PRINT_ERR("shmctl");
+        exit(1);
+    }
+}
