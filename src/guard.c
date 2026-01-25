@@ -10,9 +10,9 @@
 int main(int argc, char* argv[]) {
     PRINT("I'm the guard!");
 
-    key_t shmKey = generateKey(SHM_KEY);
+    key_t shmKey = generateKey(SHM_KEY_ID);
     int shmid = getShmid(shmKey, 0);
-    sharedState* state = getSharedMemory(shmid);
+    sharedState* state = attachSharedMemory(shmid);
 
     int Tp = state->Tp;
     int Tk = state->Tk;

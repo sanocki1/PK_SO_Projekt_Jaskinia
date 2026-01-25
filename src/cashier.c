@@ -4,41 +4,54 @@
 #include <sys/shm.h>
 #include <sys/msg.h>
 #include <errno.h>
+#include <semaphore.h>
 #include <signal.h>
 #include "logger.h"
 #include "config.h"
 #include "utils.h"
 
-static sharedState* state;
-
-void handleSigint(int sig) {
-    PRINT("Caught SIGINT, terminating cashier...");
-    deattachSharedMemory(state);
-    exit(0);
-}
+volatile sig_atomic_t stop = 0;
+void handleSigint(int sig) { stop = 1; }
 
 int main(int argc, char* argv[]) {
+    double price;
+
     PRINT("I'm the cashier!");
 
     struct sigaction sigIntHandler = {0};
     sigIntHandler.sa_handler = handleSigint;
     sigaction(SIGINT, &sigIntHandler, nullptr);
 
-    key_t shmKey = generateKey(SHM_KEY);
-    int shmid = getShmid(shmKey, 0);
-    state = getSharedMemory(shmid);
+    key_t key = generateKey(SHM_KEY_ID);
+    int shmid = getShmid(key, 0);
+    sharedState* state = attachSharedMemory(shmid);
 
-    key_t visitorCashierMsgKey = generateKey(VISITOR_CASHIER_QUEUE);
-    int visitorCashierMsgQueueId = getMsgQueueId(visitorCashierMsgKey, 0);
+    key = generateKey(VISITOR_CASHIER_QUEUE_KEY_ID);
+    int visitorCashierMsgQueueId = getMsgQueueId(key, 0);
 
-    while (1) {
+    key = generateKey(SEMAPHORE_KEY_ID);
+    int semId = getSemaphoreId(key, SEM_COUNT, 0);
+
+    while (!stop) {
         TicketMessage msg;
-        if (msgrcv(visitorCashierMsgQueueId, &msg, sizeof(TicketMessage) - sizeof(long), 0, 0) == -1) {
+        if (msgrcv(visitorCashierMsgQueueId, &msg, sizeof(TicketMessage) - sizeof(long),
+            0, 0) == -1) {
+            if (errno == EINTR) continue;
             PRINT_ERR("msgrcv");
             continue;
         }
         PRINT("Visitor age %d, route %d", msg.age, msg.route);
+        if (msg.age < 3) { price = 0; }
+        else if (msg.isRepeat) { price = BASE_TICKET_PRICE * 0.5; }
+        else { price = BASE_TICKET_PRICE; }
+
+        PRINT("Ticket price: %.2f", price);
+        P(semId, 0);
+        state->ticketsSold++;
+        state->moneyEarned += price;
+        V(semId, 0);
     }
 
+    deattachSharedMemory(state);
     PRINT("Finishing...");
 }

@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/msg.h>
+#include <sys/sem.h>
 #include <sys/shm.h>
 
 key_t generateKey(int id) {
@@ -25,13 +26,27 @@ int getShmid(key_t shmKey, int flag) {
     return shmid;
 }
 
-sharedState* getSharedMemory(int shmid) {
+sharedState* attachSharedMemory(int shmid) {
     sharedState* state = shmat(shmid, nullptr, 0);
     if (state == (sharedState*)-1) {
         PRINT_ERR("shmat");
         exit(1);
     }
     return state;
+}
+
+void deattachSharedMemory(sharedState* state) {
+    if (shmdt(state) == -1) {
+        PRINT_ERR("shmdt");
+        exit(1);
+    }
+}
+
+void destroySharedMemory(int shmid) {
+    if (shmctl(shmid, IPC_RMID, nullptr) == -1) {
+        PRINT_ERR("shmctl");
+        exit(1);
+    }
 }
 
 int getMsgQueueId(key_t msgKey, int flag) {
@@ -50,16 +65,41 @@ void destroyMsgQueue(int msgQueueId) {
     }
 }
 
-void deattachSharedMemory(sharedState* state) {
-    if (shmdt(state) == -1) {
-        PRINT_ERR("shmdt");
+int getSemaphoreId(key_t semKey, int count, int flag) {
+    int semId = semget(semKey, count, flag);
+    if (semId == -1) {
+        PRINT_ERR("semget");
+        exit(1);
+    }
+    return semId;
+}
+
+void initializeSemaphore(int semId, int semNum ,int initialValue) {
+    if (semctl(semId, semNum, SETVAL, initialValue) == -1) {
+        PRINT_ERR("semctl");
         exit(1);
     }
 }
 
-void destroySharedMemory(int shmid) {
-    if (shmctl(shmid, IPC_RMID, nullptr) == -1) {
-        PRINT_ERR("shmctl");
+void destroySemaphore(int semId) {
+    if (semctl(semId, 0, IPC_RMID) == -1) {
+        PRINT_ERR("semctl");
+        exit(1);
+    }
+}
+
+void P(int semid, int semnum) {
+    struct sembuf op = {semnum, -1, 0};
+    if (semop(semid, &op, 1) == -1) {
+        PRINT_ERR("semop P");
+        exit(1);
+    }
+}
+
+void V(int semid, int semnum) {
+    struct sembuf op = {semnum, +1, 0};
+    if (semop(semid, &op, 1) == -1) {
+        PRINT_ERR("semop V");
         exit(1);
     }
 }

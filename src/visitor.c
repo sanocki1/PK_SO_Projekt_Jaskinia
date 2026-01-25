@@ -11,14 +11,14 @@ int main(int argc, char* argv[]) {
     int age = rand() % 80 + 1;
     int wantsToVisit = 1;
     int isRepeat = 0;
-    int routeToVisit;
+    int routeToVisit = 0;
 
     PRINT("I'm a visitor of age %d", age);
 
-    key_t visitorCashierMsgKey = generateKey(VISITOR_CASHIER_QUEUE);
+    key_t visitorCashierMsgKey = generateKey(VISITOR_CASHIER_QUEUE_KEY_ID);
     int visitorCashierMsgQueueId = getMsgQueueId(visitorCashierMsgKey, 0);
 
-    key_t visitorGuideMsgKey = generateKey(VISITOR_GUIDE_QUEUE);
+    key_t visitorGuideMsgKey = generateKey(VISITOR_GUIDE_QUEUE_KEY_ID);
     int visitorGuideMsgQueueId = getMsgQueueId(visitorGuideMsgKey, 0);
 
     while (wantsToVisit) {
@@ -50,8 +50,7 @@ int main(int argc, char* argv[]) {
 
         //TODO: bridge waiting, route waiting, etc goes here
 
-        if (rand() % 10 == 0) {
-            wantsToVisit = 1;
+        if (!isRepeat && rand() % 10 == 0) {
             isRepeat = 1;
         } else {
             wantsToVisit = 0;

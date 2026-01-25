@@ -5,6 +5,7 @@
 #include <sys/msg.h>
 #include <sys/wait.h>
 #include <semaphore.h>
+#include <time.h>
 #include <sys/types.h>
 #include <sys/shm.h>
 #include "config.h"
@@ -18,27 +19,33 @@
 int main(int argc, char* argv[]) {
     PRINT("I'm the main process!");
 
+    srand(time(nullptr) + getpid());
+
     if (argc != 3) {
         PRINT_ERR("Wrong number of arguments in the main process");
         return 1;
     }
 
-    // key_t semKey = generateKey(TEST_SEMAPHORE);
-    // int sem = semget(semKey, 1, IPC_CREAT | 0600);
+    key_t key = generateKey(SHM_KEY_ID);
+    int shmid = getShmid(key, IPC_CREAT | 0600); //CHECK IPC_EXCL TO SEE IF IT THROWS IF shm/sem/msgq already exists
+    // useful for initiating without issues if this already exists and wasnt removed for some reason
+    sharedState* state = attachSharedMemory(shmid);
 
-    key_t shmKey = generateKey(SHM_KEY);
-    int shmid = getShmid(shmKey, IPC_CREAT | 0600);
-    sharedState* state = getSharedMemory(shmid);
+    key = generateKey(VISITOR_CASHIER_QUEUE_KEY_ID);
+    int visitorCashierMsgQueueId = getMsgQueueId(key, IPC_CREAT | 0600);
+
+    key = generateKey(VISITOR_GUIDE_QUEUE_KEY_ID);
+    int visitorGuideMsgQueueId = getMsgQueueId(key, IPC_CREAT | 0600);
+
+    key = generateKey(SEMAPHORE_KEY_ID);
+    int semId = getSemaphoreId(key, SEM_COUNT, IPC_CREAT | 0600);
+    initializeSemaphore(semId, CASHIER_SEM, 1);
 
     state->Tp = atoi(argv[1]);
     state->Tk = atoi(argv[2]);
     state->closing = 0;
-
-    key_t visitorCashierMsgKey = generateKey(VISITOR_CASHIER_QUEUE);
-    int visitorCashierMsgQueueId = getMsgQueueId(visitorCashierMsgKey, IPC_CREAT | 0600);
-
-    key_t visitorGuideMsgKey = generateKey(VISITOR_GUIDE_QUEUE);
-    int visitorGuideMsgQueueId = getMsgQueueId(visitorGuideMsgKey, IPC_CREAT | 0600);
+    state->moneyEarned = 0;
+    state->ticketsSold = 0;
 
     pid_t cashierPid = fork();
     if (cashierPid == -1) {
@@ -71,23 +78,30 @@ int main(int argc, char* argv[]) {
     }
 
     while (!state->closing) {
-        pid_t visitorPid = fork();
-        if (visitorPid == -1) {
-            PRINT_ERR("visitor fork");
-        }
-        if (visitorPid == 0) {
-            execl("./visitor", "visitor", argv[1],   NULL);
-            PRINT_ERR("visitor execl failed");
+        int groupCount = rand() % MAX_VISITOR_GROUP_SIZE + 1;
+        for (int i = 0; i < groupCount; i++) {
+            pid_t visitorPid = fork();
+            if (visitorPid == -1) {
+                PRINT_ERR("visitor fork");
+            }
+            if (visitorPid == 0) {
+                execl("./visitor", "visitor", argv[1],   NULL);
+                PRINT_ERR("visitor execl failed");
+            }
         }
         sleep(VISITOR_FREQUENCY);
     }
 
     while (wait(nullptr) > 0) {}
 
+    PRINT("Tickets sold for the day: %d", state->ticketsSold);
+    PRINT("Total money earned: %.2f", state->moneyEarned);
+
     destroyMsgQueue(visitorCashierMsgQueueId);
     destroyMsgQueue(visitorGuideMsgQueueId);
     deattachSharedMemory(state);
     destroySharedMemory(shmid);
+    destroySemaphore(semId);
 
     PRINT("Finishing...");
     return 0;
