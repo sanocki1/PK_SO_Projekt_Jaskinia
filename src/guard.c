@@ -23,6 +23,7 @@ int main(int argc, char* argv[]) {
     int secondsOpen = (Tk - Tp) * SECONDS_PER_HOUR;
 
     pid_t cashierPid = atoi(argv[1]);
+    pid_t guidePid = atoi(argv[2]);
 
     PRINT("Tour is open!");
     PRINT("Tour will close in %d seconds", secondsOpen);
@@ -31,6 +32,7 @@ int main(int argc, char* argv[]) {
     PRINT("Tour is closed!");
 
     kill(cashierPid, SIGINT);
+    kill(guidePid, SIGINT);
     deattachSharedMemory(state);
 
     PRINT("Finishing...");

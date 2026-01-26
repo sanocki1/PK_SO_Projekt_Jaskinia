@@ -8,12 +8,13 @@
 #define SEMAPHORE_KEY_ID 3
 #define VISITOR_GUIDE_QUEUE_KEY_ID 4
 
-#define PRIORITY_REPEAT 1
+#define PRIORITY_HIGH 1
 #define PRIORITY_NORMAL 2
 
-#define SEM_COUNT 1
-#define CASHIER_SEM 0
-#define ADULT_IN_QUEUE_SEM 1
+#define SEM_COUNT 3
+#define BRIDGE_SEM 0
+#define VISITOR_COUNT_SEM 1
+#define GUIDE_BRIDGE_WAIT_SEM 2
 
 #define EINTR 4
 
@@ -21,22 +22,20 @@ typedef struct {
     int Tp; // opening time
     int Tk; // closing time
     int closing; // 0 - simulation running, 1 - simulation closing
-    int adultsOnRouteOneAmount;
-    int adultsOnRouteTwoAmount;
     int ticketsSold;
     double moneyEarned;
+    int visitorCount;
 } sharedState;
 
 typedef struct {
     long mtype;
     int age;
-    int route;
     int isRepeat;
 } TicketMessage;
 
 typedef struct {
     long mtype;
-    int ppid;
+    int pid;
 } QueueMessage;
 
 key_t generateKey(int id);

@@ -1,4 +1,6 @@
 #include "utils.h"
+
+#include <errno.h>
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include "logger.h"
@@ -88,18 +90,22 @@ void destroySemaphore(int semId) {
     }
 }
 
-void P(int semid, int semnum) {
+void P(int semId, int semnum) {
     struct sembuf op = {semnum, -1, 0};
-    if (semop(semid, &op, 1) == -1) {
-        PRINT_ERR("semop P");
-        exit(1);
+    if (semop(semId, &op, 1) == -1) {
+        if (errno != EINTR) {
+            PRINT_ERR("semop P");
+            exit(EXIT_FAILURE);
+        }
     }
 }
 
-void V(int semid, int semnum) {
+void V(int semId, int semnum) {
     struct sembuf op = {semnum, +1, 0};
-    if (semop(semid, &op, 1) == -1) {
-        PRINT_ERR("semop V");
-        exit(1);
+    if (semop(semId, &op, 1) == -1) {
+        if (errno != EINTR) {
+            PRINT_ERR("semop P");
+            exit(EXIT_FAILURE);
+        }
     }
 }

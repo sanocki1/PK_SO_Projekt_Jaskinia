@@ -11,16 +11,18 @@
 #include "utils.h"
 
 volatile sig_atomic_t stop = 0;
-void handleSigint(int sig) { stop = 1; }
+void handleSignal(int sig) {
+    if (sig == SIGINT) stop = 1;
+}
 
 int main(int argc, char* argv[]) {
     double price;
 
     PRINT("I'm the cashier!");
 
-    struct sigaction sigIntHandler = {0};
-    sigIntHandler.sa_handler = handleSigint;
-    sigaction(SIGINT, &sigIntHandler, nullptr);
+    struct sigaction signalHandler = {0};
+    signalHandler.sa_handler = handleSignal;
+    sigaction(SIGINT, &signalHandler, nullptr);
 
     key_t key = generateKey(SHM_KEY_ID);
     int shmid = getShmid(key, 0);
@@ -28,9 +30,6 @@ int main(int argc, char* argv[]) {
 
     key = generateKey(VISITOR_CASHIER_QUEUE_KEY_ID);
     int visitorCashierMsgQueueId = getMsgQueueId(key, 0);
-
-    key = generateKey(SEMAPHORE_KEY_ID);
-    int semId = getSemaphoreId(key, SEM_COUNT, 0);
 
     while (!stop) {
         TicketMessage msg;
@@ -40,16 +39,14 @@ int main(int argc, char* argv[]) {
             PRINT_ERR("msgrcv");
             continue;
         }
-        PRINT("Visitor age %d, route %d", msg.age, msg.route);
+        // PRINT("Visitor age %d", msg.age);
         if (msg.age < 3) { price = 0; }
         else if (msg.isRepeat) { price = BASE_TICKET_PRICE * 0.5; }
         else { price = BASE_TICKET_PRICE; }
 
-        PRINT("Ticket price: %.2f", price);
-        P(semId, 0);
+        // PRINT("Ticket price: %.2f", price);
         state->ticketsSold++;
         state->moneyEarned += price;
-        V(semId, 0);
     }
 
     deattachSharedMemory(state);

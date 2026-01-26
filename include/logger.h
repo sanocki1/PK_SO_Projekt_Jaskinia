@@ -23,6 +23,6 @@
 printf(PROCESS_COLOR PROCESS_NAME " " fmt "\n", ##__VA_ARGS__)
 
 #define PRINT_ERR(fmt, ...) \
-fprintf(stderr, PROCESS_COLOR PROCESS_NAME " " fmt "\n", ##__VA_ARGS__)
+fprintf(stderr, COLOR_RED PROCESS_NAME " " fmt "\n", ##__VA_ARGS__)
 
 #endif

@@ -27,8 +27,7 @@ int main(int argc, char* argv[]) {
     }
 
     key_t key = generateKey(SHM_KEY_ID);
-    int shmid = getShmid(key, IPC_CREAT | 0600); //CHECK IPC_EXCL TO SEE IF IT THROWS IF shm/sem/msgq already exists
-    // useful for initiating without issues if this already exists and wasnt removed for some reason
+    int shmid = getShmid(key, IPC_CREAT | 0600);
     sharedState* state = attachSharedMemory(shmid);
 
     key = generateKey(VISITOR_CASHIER_QUEUE_KEY_ID);
@@ -39,7 +38,9 @@ int main(int argc, char* argv[]) {
 
     key = generateKey(SEMAPHORE_KEY_ID);
     int semId = getSemaphoreId(key, SEM_COUNT, IPC_CREAT | 0600);
-    initializeSemaphore(semId, CASHIER_SEM, 1);
+    initializeSemaphore(semId,BRIDGE_SEM, BRIDGE_CAPACITY);
+    initializeSemaphore(semId,VISITOR_COUNT_SEM, 1);
+    initializeSemaphore(semId,GUIDE_BRIDGE_WAIT_SEM, 0);
 
     state->Tp = atoi(argv[1]);
     state->Tk = atoi(argv[2]);
@@ -55,7 +56,6 @@ int main(int argc, char* argv[]) {
         execl("./cashier", "cashier", NULL);
         PRINT_ERR("cashier execl failed");
     }
-
     char cashierPidStr[16];
     snprintf(cashierPidStr, sizeof(cashierPidStr), "%d", cashierPid);
 
@@ -67,13 +67,15 @@ int main(int argc, char* argv[]) {
         execl("./guide", "guide", NULL);
         PRINT_ERR("guide execl failed");
     }
+    char guidePidStr[16];
+    snprintf(guidePidStr, sizeof(guidePidStr), "%d", guidePid);
 
     pid_t guardPid = fork();
     if (guardPid == -1) {
         PRINT_ERR("guard fork");
     }
     if (guardPid == 0) {
-        execl("./guard", "guard", cashierPidStr, NULL);
+        execl("./guard", "guard", cashierPidStr, guidePidStr, NULL);
         PRINT_ERR("guard execl failed");
     }
 
