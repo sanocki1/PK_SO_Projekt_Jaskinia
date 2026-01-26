@@ -1,10 +1,6 @@
 #include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/shm.h>
 #include <sys/msg.h>
 #include <errno.h>
-#include <semaphore.h>
 #include <signal.h>
 #include "logger.h"
 #include "config.h"
@@ -22,7 +18,7 @@ int main(int argc, char* argv[]) {
 
     struct sigaction signalHandler = {0};
     signalHandler.sa_handler = handleSignal;
-    sigaction(SIGTERM, &signalHandler, nullptr);
+    sigaction(SIGTERM, &signalHandler, NULL);
 
     key_t key = generateKey(SHM_KEY_ID);
     int shmid = getShmid(key, 0);

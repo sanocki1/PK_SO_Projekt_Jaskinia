@@ -4,22 +4,16 @@
 #include <unistd.h>
 #include <sys/msg.h>
 #include <sys/wait.h>
-#include <semaphore.h>
 #include <time.h>
 #include <sys/types.h>
-#include <sys/shm.h>
 #include "config.h"
 #include "logger.h"
 #include "utils.h"
-#include <sys/types.h>
-#include <sys/ipc.h>
-#include <sys/sem.h>
-
 
 int main(int argc, char* argv[]) {
     PRINT("I'm the main process!");
 
-    srand(time(nullptr) + getpid());
+    srand(time(NULL) + getpid());
 
     if (argc != 3) {
         PRINT_ERR("Wrong number of arguments in the main process");
@@ -94,7 +88,7 @@ int main(int argc, char* argv[]) {
         sleep(VISITOR_FREQUENCY);
     }
 
-    while (wait(nullptr) > 0) {}
+    while (wait(NULL) > 0) {}
 
     PRINT("Tickets sold for the day: %d", state->ticketsSold);
     PRINT("Total money earned: %.2f", state->moneyEarned);

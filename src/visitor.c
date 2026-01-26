@@ -17,7 +17,7 @@ void handleSignal(int sig) {
 
 int main(int argc, char* argv[]) {
     pid_t pid = getpid();
-    srand(time(nullptr) + pid);
+    srand(time(NULL) + pid);
     int age = rand() % 80 + 1;
     int wantsToVisit = 1;
     int isRepeat = 0;
@@ -26,8 +26,8 @@ int main(int argc, char* argv[]) {
 
     struct sigaction signalHandler = {0};
     signalHandler.sa_handler = handleSignal;
-    sigaction(SIGUSR1, &signalHandler, nullptr);
-    sigaction(SIGTERM, &signalHandler, nullptr);
+    sigaction(SIGUSR1, &signalHandler, NULL);
+    sigaction(SIGTERM, &signalHandler, NULL);
 
     key_t key = generateKey(SHM_KEY_ID);
     int shmid = getShmid(key, 0);

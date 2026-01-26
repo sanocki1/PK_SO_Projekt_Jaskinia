@@ -1,6 +1,5 @@
 #include <signal.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include "utils.h"
 #include "logger.h"
 #include <unistd.h>
@@ -19,7 +18,7 @@ int main(int argc, char* argv[]) {
 
     struct sigaction signalHandler = {0};
     signalHandler.sa_handler = handleSignal;
-    sigaction(SIGTERM, &signalHandler, nullptr);
+    sigaction(SIGTERM, &signalHandler, NULL);
 
     key_t key = generateKey(SHM_KEY_ID);
     int shmid = getShmid(key, 0);

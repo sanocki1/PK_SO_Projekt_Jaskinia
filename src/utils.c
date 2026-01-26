@@ -1,5 +1,4 @@
 #include "utils.h"
-
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/ipc.h>
@@ -29,7 +28,7 @@ int getShmid(key_t shmKey, int flag) {
 }
 
 sharedState* attachSharedMemory(int shmid) {
-    sharedState* state = shmat(shmid, nullptr, 0);
+    sharedState* state = shmat(shmid, NULL, 0);
     if (state == (sharedState*)-1) {
         PRINT_ERR("shmat");
         exit(1);
@@ -45,7 +44,7 @@ void deattachSharedMemory(sharedState* state) {
 }
 
 void destroySharedMemory(int shmid) {
-    if (shmctl(shmid, IPC_RMID, nullptr) == -1) {
+    if (shmctl(shmid, IPC_RMID, NULL) == -1) {
         PRINT_ERR("shmctl");
         exit(1);
     }
@@ -61,7 +60,7 @@ int getMsgQueueId(key_t msgKey, int flag) {
 }
 
 void destroyMsgQueue(int msgQueueId) {
-    if (msgctl(msgQueueId, IPC_RMID, nullptr) == -1) {
+    if (msgctl(msgQueueId, IPC_RMID, NULL) == -1) {
         PRINT_ERR("msgctl");
         exit(1);
     }
