@@ -12,7 +12,7 @@
 
 volatile sig_atomic_t stop = 0;
 void handleSignal(int sig) {
-    if (sig == SIGINT) stop = 1;
+    if (sig == SIGTERM) stop = 1;
 }
 
 int main(int argc, char* argv[]) {
@@ -22,7 +22,7 @@ int main(int argc, char* argv[]) {
 
     struct sigaction signalHandler = {0};
     signalHandler.sa_handler = handleSignal;
-    sigaction(SIGINT, &signalHandler, nullptr);
+    sigaction(SIGTERM, &signalHandler, nullptr);
 
     key_t key = generateKey(SHM_KEY_ID);
     int shmid = getShmid(key, 0);

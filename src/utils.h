@@ -8,8 +8,19 @@
 #define SEMAPHORE_KEY_ID 3
 #define VISITOR_GUIDE_QUEUE_KEY_ID 4
 
-#define PRIORITY_HIGH 1
-#define PRIORITY_NORMAL 2
+// children before adults, so after 1 adult is found queue fills up with
+// as many children as possible so even less chance of cloging the queue
+#define PRIORITY_HIGH_CHILD 1
+#define PRIORITY_HIGH_ADULT 2
+#define PRIORITY_NORMAL_CHILD 3
+#define PRIORITY_NORMAL_ADULT 4
+
+
+// #define PRIORITY_HIGH_CHILD 2
+// #define PRIORITY_HIGH_ADULT 1
+// #define PRIORITY_NORMAL_CHILD 4
+// #define PRIORITY_NORMAL_ADULT 3
+
 
 #define SEM_COUNT 3
 #define BRIDGE_SEM 0

@@ -31,8 +31,8 @@ int main(int argc, char* argv[]) {
     state->closing = 1;
     PRINT("Tour is closed!");
 
-    kill(cashierPid, SIGINT);
-    kill(guidePid, SIGINT);
+    kill(cashierPid, SIGTERM);
+    kill(guidePid, SIGTERM);
     deattachSharedMemory(state);
 
     PRINT("Finishing...");
