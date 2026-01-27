@@ -50,6 +50,9 @@ int main(int argc, char* argv[]) {
     int visitorGuideMsgQueueId1 = openMsgQueue(VISITOR_GUIDE_QUEUE_KEY_ID_1);
     int visitorGuideMsgQueueId2 = openMsgQueue(VISITOR_GUIDE_QUEUE_KEY_ID_2);
     int semId = openSemaphore(SEMAPHORE_KEY_ID, SEM_COUNT);
+    initLogger(semId);
+
+    LOG("I'm a visitor!");
 
     updateVisitorCount(state, semId, 1);
 
@@ -57,10 +60,12 @@ int main(int argc, char* argv[]) {
         routeToVisit = selectRoute(age, isRepeat, routeToVisit);
         canProceed = 0;
 
+        LOG("Buying a ticket for route %d.", routeToVisit);
         buyTicket(visitorCashierMsgQueueId, age, isRepeat);
 
         long priority = getQueuePriority(age, isRepeat);
         int queueId = routeToVisit == 1 ? visitorGuideMsgQueueId1 : visitorGuideMsgQueueId2;
+        LOG("Joining queue %d with priority %ld.", routeToVisit, priority);
         joinQueue(queueId, pid, priority);
 
         // wait for guide signal to enter the bridge/cave
@@ -71,27 +76,34 @@ int main(int argc, char* argv[]) {
         int bridgeSemaphore = routeToVisit == 1 ? BRIDGE_SEM_1 : BRIDGE_SEM_2;
         int guideBridgeSemaphore = routeToVisit == 1 ? GUIDE_BRIDGE_SEM_1 : GUIDE_BRIDGE_SEM_2;
 
+        LOG("Waiting to cross the bridge to route %d", routeToVisit);
         // wait for bridge capacity to enter, then signal guide
         crossBridge(semId, bridgeSemaphore);
         V(semId, guideBridgeSemaphore);
+        LOG("Crossed the bridge.");
 
         //wait for guide signal that the tour has ended
         waitForSignal();
+        LOG("Tour ended.");
 
+        LOG("Waiting to cross the bridge back.");
         // wait for bridge capacity to leave, then signal guide
         crossBridge(semId, bridgeSemaphore);
         V(semId, guideBridgeSemaphore);
+        LOG("Crossed the bridge back.");
 
 
         if (!isRepeat && rand() % 10 == 0) {
             isRepeat = 1;
+            LOG("Decided to visit again.");
         } else {
             wantsToVisit = 0;
+            LOG("No more visits.");
         }
     }
 
     updateVisitorCount(state, semId, -1);
-    PRINT("%d leaving, visitor count after leaving = %d", pid, state->visitorCount);
+    LOG("Leaving...");
 
     deattachSharedMemory(state);
     return 0;
@@ -117,7 +129,7 @@ void buyTicket(int queueId, int age, int isRepeat) {
     msg.age = age;
     msg.isRepeat = isRepeat;
     if (msgsnd(queueId, &msg, sizeof(TicketMessage) - sizeof(long), 0) == -1) {
-        PRINT_ERR("msgsnd ticket");
+        LOG_ERR("msgsnd ticket");
         exit(1);
     }
 }
@@ -127,7 +139,7 @@ void joinQueue(int queueId, pid_t pid, long priority) {
     msg.mtype = priority;
     msg.pid = pid;
     if (msgsnd(queueId, &msg, sizeof(QueueMessage) - sizeof(long), 0) == -1) {
-        PRINT_ERR("msgsnd queue");
+        LOG_ERR("msgsnd queue");
         exit(1);
     }
 }

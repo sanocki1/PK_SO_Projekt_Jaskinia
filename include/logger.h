@@ -19,10 +19,21 @@
 #define PROCESS_COLOR COLOR_RESET
 #endif
 
-#define PRINT(fmt, ...) \
-printf(PROCESS_COLOR PROCESS_NAME " " fmt "\n", ##__VA_ARGS__)
+void initLogger(int semId);
 
-#define PRINT_ERR(fmt, ...) \
-fprintf(stderr, COLOR_RED PROCESS_NAME " " fmt "\n", ##__VA_ARGS__)
+void clearLog();
+
+void logMessage(const char* color, const char* processName,
+                const char* fmt, ...);
+
+void logError(const char* processName, const char* fmt, ...);
+
+// Legacy macros for backward compatibility
+#define LOG(fmt, ...) \
+logMessage(PROCESS_COLOR, PROCESS_NAME, fmt, ##__VA_ARGS__)
+
+#define LOG_ERR(fmt, ...) \
+logError(PROCESS_NAME, fmt, ##__VA_ARGS__)
+
 
 #endif

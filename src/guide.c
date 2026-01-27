@@ -23,8 +23,6 @@ void signalVisitors(pid_t* visitors, int count, int signal);
 void waitForBridgeCrossing(int semId, int bridgeSem, int count);
 
 int main(int argc, char* argv[]) {
-    PRINT("I'm the guide!");
-
     int routeCapacity;
     int visitorGuideQueueKeyId;
     int guideBridgeSem;
@@ -52,6 +50,8 @@ int main(int argc, char* argv[]) {
 
     int visitorGuideMsgQueueId = openMsgQueue(visitorGuideQueueKeyId);
     int semId = openSemaphore(SEMAPHORE_KEY_ID, SEM_COUNT);
+    initLogger(semId);
+    LOG("I'm the guide on route, %s!", argv[1]);
 
     // wait for some initial visitors to arrive so more than just the first group is processed
     sleep(VISITOR_FREQUENCY + 1);
@@ -93,25 +93,26 @@ int main(int argc, char* argv[]) {
                 }
 
         if (count > 0) {
-            PRINT("Waiting for %d visitors to cross the bridge", count);
+            LOG("Waiting for %d visitors to cross the bridge to enter.", count);
             waitForBridgeCrossing(semId, guideBridgeSem, count);
-            PRINT("%d visitors crossed the bridge to enter", count);
+            LOG("%d visitors crossed the bridge to enter.", count);
 
             if (!stop) {
-                PRINT("Tour is in progress");
+                LOG("Tour is in progress.");
                 sleep(routeDuration);
-                PRINT("Tour finished");
+                LOG("Tour finished.");
             }
 
             signalVisitors(visitors, count, SIGUSR1);
 
+            LOG("Waiting for %d visitors to cross the bridge to leave.", count);
             waitForBridgeCrossing(semId, guideBridgeSem, count);
-            PRINT("%d visitors left the cave", count);
+            LOG("%d visitors left the cave.", count);
         }
     }
 
     deattachSharedMemory(state);
-    PRINT("Finishing...");
+    LOG("Finishing...");
     return 0;
 }
 

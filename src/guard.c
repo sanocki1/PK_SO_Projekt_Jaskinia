@@ -9,10 +9,12 @@
 void terminateProcesses(pid_t cashierPid, pid_t guide1Pid, pid_t guide2Pid);
 
 int main(int argc, char* argv[]) {
-    PRINT("I'm the guard!");
-
     int shmid = openSharedMemory(SHM_KEY_ID);
     sharedState* state = attachSharedMemory(shmid);
+
+    int semId = openSemaphore(SEMAPHORE_KEY_ID, SEM_COUNT);
+    initLogger(semId);
+    LOG("I'm the guard!");
 
     int secondsOpen = (state->Tk - state->Tp) * SECONDS_PER_HOUR;
 
@@ -20,16 +22,16 @@ int main(int argc, char* argv[]) {
     pid_t guide1Pid = atoi(argv[2]);
     pid_t guide2Pid = atoi(argv[3]);
 
-    PRINT("Tour is open!");
-    PRINT("Tour will close in %d seconds", secondsOpen);
+    LOG("Touring is open!");
+    LOG("Touring will close in %d seconds", secondsOpen);
     sleep(secondsOpen);
     state->closing = 1;
-    PRINT("Tour is closed!");
+    LOG("Touring is closing!");
 
     terminateProcesses(cashierPid, guide1Pid, guide2Pid);;
     deattachSharedMemory(state);
 
-    PRINT("Finishing...");
+    LOG("Finishing...");
     return 0;
 }
 

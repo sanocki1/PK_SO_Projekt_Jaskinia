@@ -17,7 +17,6 @@ void processTicket(sharedState* state, const TicketMessage* msg);
 
 
 int main(int argc, char* argv[]) {
-    PRINT("I'm the cashier!");
 
     struct sigaction signalHandler = {0};
     signalHandler.sa_handler = handleSignal;
@@ -28,19 +27,24 @@ int main(int argc, char* argv[]) {
 
     int visitorCashierMsgQueueId = openMsgQueue(VISITOR_CASHIER_QUEUE_KEY_ID);
 
+    int semId = openSemaphore(SEMAPHORE_KEY_ID, SEM_COUNT);
+    initLogger(semId);
+
+    LOG("I'm the cashier!");
+
     while (!stop) {
         TicketMessage msg;
         if (msgrcv(visitorCashierMsgQueueId, &msg, sizeof(TicketMessage) - sizeof(long),
             0, 0) == -1) {
             if (errno == EINTR) continue;
-            PRINT_ERR("msgrcv");
+            LOG_ERR("msgrcv");
             continue;
         }
         processTicket(state, &msg);
     }
 
     deattachSharedMemory(state);
-    PRINT("Finishing...");
+    LOG("Finishing...");
 }
 
 double calculateTicketPrice(int age, int isRepeat) {
@@ -53,4 +57,5 @@ void processTicket(sharedState* state, const TicketMessage* msg) {
     double price = calculateTicketPrice(msg->age, msg->isRepeat);
     state->ticketsSold++;
     state->moneyEarned += price;
+    LOG("Ticket sold for %.2f", price);
 }

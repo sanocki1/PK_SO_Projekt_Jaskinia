@@ -29,8 +29,8 @@ void cleanupResources(int visitorCashierMsgQueueId, int visitorGuideMsgQueueId1,
 
 
 int main(int argc, char* argv[]) {
-    PRINT("I'm the main process!");
-
+    clearLog();
+    
     if (!validateParameters()) {
         return 1;
     }
@@ -53,6 +53,10 @@ int main(int argc, char* argv[]) {
     initializeSemaphores(semId);
     initializeSharedState(state);
 
+    initLogger(semId);
+    LOG("I'm the main process!");
+    LOG("Startup parameters have been initialized.");
+
     char cashierPidStr[16], guide1PidStr[16], guide2PidStr[16];
     char* cashierArgs[] = {"cashier", NULL};
     char* guide1Args[] = {"guide", "1", NULL};
@@ -70,9 +74,12 @@ int main(int argc, char* argv[]) {
     char* guardArgs[] = {"guard", cashierPidStr, guide1PidStr, guide2PidStr, NULL};
     spawnProcess("./guard", guardArgs);
 
+    LOG("Simulation started. Visitors are arriving...");
+
     while (!state->closing) {
         int groupCount = rand() % MAX_VISITOR_GROUP_SIZE + 1;
         if (state->visitorCount + groupCount <= maxVisitorCount) {
+            LOG("Visitor group of size %d arrived", groupCount);
             spawnVisitorGroup(groupCount);
         }
         sleep(VISITOR_FREQUENCY);
@@ -80,8 +87,9 @@ int main(int argc, char* argv[]) {
 
     while (wait(NULL) > 0) {}
 
-    PRINT("Tickets sold for the day: %d", state->ticketsSold);
-    PRINT("Total money earned: %.2f", state->moneyEarned);
+    LOG("Tickets sold for the day: %d", state->ticketsSold);
+    LOG("Total money earned: %.2f", state->moneyEarned);
+    LOG("Closing the simulation.");
 
     destroyMsgQueue(visitorCashierMsgQueueId);
     destroyMsgQueue(visitorGuideMsgQueueId1);
@@ -90,7 +98,6 @@ int main(int argc, char* argv[]) {
     destroySharedMemory(shmid);
     destroySemaphore(semId);
 
-    PRINT("Finishing...");
     return 0;
 }
 
@@ -98,23 +105,23 @@ int main(int argc, char* argv[]) {
 int validateParameters() {
     if (OPENING_TIME < 0 || CLOSING_TIME > 24 || OPENING_TIME >= CLOSING_TIME || SECONDS_PER_HOUR < 1 ||
         SECONDS_PER_HOUR <= 0 || VISITOR_FREQUENCY <= 0) {
-        PRINT_ERR("Invalid time parameters");
+        LOG_ERR("Invalid time parameters");
         return 0;
     }
     if (ROUTE_1_CAPACITY <= BRIDGE_CAPACITY || ROUTE_2_CAPACITY <= BRIDGE_CAPACITY || BRIDGE_CAPACITY <= 0) {
-        PRINT_ERR("Invalid capacity parameters");
+        LOG_ERR("Invalid capacity parameters");
         return 0;
     }
     if (ROUTE_1_DURATION <= 0 || ROUTE_2_DURATION <= 0 || BRIDGE_DURATION <= 0) {
-        PRINT_ERR("Invalid duration parameters");
+        LOG_ERR("Invalid duration parameters");
         return 0;
     }
     if (MAX_VISITOR_GROUP_SIZE <= 0) {
-        PRINT_ERR("Invalid visitor group size parameters");
+        LOG_ERR("Invalid visitor group size parameters");
         return 0;
     }
     if (BASE_TICKET_PRICE <= 0) {
-        PRINT_ERR("Invalid ticket price parameters");
+        LOG_ERR("Invalid ticket price parameters");
         return 0;
     }
     return 1;
@@ -123,11 +130,11 @@ int validateParameters() {
 ulong getMaxVisitorCount() {
     struct rlimit limit;
     if (getrlimit(RLIMIT_NPROC, &limit) == -1) {
-        PRINT_ERR("getrlimit");
+        LOG_ERR("getrlimit");
         return 0;
     }
     if (limit.rlim_cur < (MAIN_PROCESSES_COUNT + MAX_VISITOR_GROUP_SIZE)) {
-        PRINT_ERR("Not enough process limit to run the simulation");
+        LOG_ERR("Not enough process limit to run the simulation");
         return 0;
     }
     return limit.rlim_cur - MAIN_PROCESSES_COUNT;
@@ -148,17 +155,18 @@ void initializeSemaphores(int semId) {
     initializeSemaphore(semId, VISITOR_COUNT_SEM, 1);
     initializeSemaphore(semId, GUIDE_BRIDGE_SEM_1, 0);
     initializeSemaphore(semId, GUIDE_BRIDGE_SEM_2, 0);
+    initializeSemaphore(semId, LOG_SEM, 1);
 }
 
 pid_t spawnProcess(const char* executable, char* const args[]) {
     pid_t pid = fork();
     if (pid == -1) {
-        PRINT_ERR("%s fork", executable);
+        LOG_ERR("%s fork", executable);
         return -1;
     }
     if (pid == 0) {
         execl(executable, args[0], args[1], args[2], args[3], args[4], NULL);
-        PRINT_ERR("%s execl failed", executable);
+        LOG_ERR("%s execl failed", executable);
         exit(1);
     }
     return pid;
