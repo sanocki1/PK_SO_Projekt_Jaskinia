@@ -49,25 +49,24 @@ typedef struct {
 key_t generateKey(int id);
 
 int getShmid(key_t shmKey, int flag);
-
+int createSharedMemory(int keyId);
+int openSharedMemory(int keyId);
 sharedState* attachSharedMemory(int shmid);
-
 void deattachSharedMemory(sharedState* state);
-
 void destroySharedMemory(int shmid);
 
 int getMsgQueueId(key_t msgKey, int flag);
-
+int createMsgQueue(int keyId);
+int openMsgQueue(int keyId);
 void destroyMsgQueue(int msgQueueId);
 
 int getSemaphoreId(key_t semKey,int count, int flag);
-
+int createSemaphore(int keyId, int count);
+int openSemaphore(int keyId, int count);
 void initializeSemaphore(int semId, int semNum ,int initialValue);
-
 void destroySemaphore(int semId);
 
 void P(int semid, int semnum);
-
 void V(int semid, int semnum);
 
 #endif

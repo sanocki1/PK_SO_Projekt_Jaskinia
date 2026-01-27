@@ -12,7 +12,19 @@ void handleSignal(int sig) {
     if (sig == SIGTERM) stop = 1;
 }
 
+int receiveMessage(int queueId, QueueMessage* msg, long msgType);
+
+int findAdult(int queueId, QueueMessage* msg);
+
+void signalVisitor(pid_t visitorPid, int signal);
+
+void signalVisitors(pid_t* visitors, int count, int signal);
+
+void waitForBridgeCrossing(int semId, int bridgeSem, int count);
+
 int main(int argc, char* argv[]) {
+    PRINT("I'm the guide!");
+
     int routeCapacity;
     int visitorGuideQueueKeyId;
     int guideBridgeSem;
@@ -29,25 +41,17 @@ int main(int argc, char* argv[]) {
         guideBridgeSem = GUIDE_BRIDGE_SEM_2;
         routeDuration = ROUTE_2_DURATION;
     }
-
-    PRINT("I'm the guide!");
-
     int visitors[routeCapacity];
 
     struct sigaction signalHandler = {0};
     signalHandler.sa_handler = handleSignal;
     sigaction(SIGTERM, &signalHandler, NULL);
 
-    key_t key = generateKey(SHM_KEY_ID);
-    int shmid = getShmid(key, 0);
+    int shmid = openSharedMemory(SHM_KEY_ID);
     sharedState* state = attachSharedMemory(shmid);
 
-    key = generateKey(visitorGuideQueueKeyId);
-    int visitorGuideMsgQueueId = getMsgQueueId(key, 0);
-    QueueMessage msg;
-
-    key = generateKey(SEMAPHORE_KEY_ID);
-    int semId = getSemaphoreId(key, SEM_COUNT, 0);
+    int visitorGuideMsgQueueId = openMsgQueue(visitorGuideQueueKeyId);
+    int semId = openSemaphore(SEMAPHORE_KEY_ID, SEM_COUNT);
 
     // wait for some initial visitors to arrive so more than just the first group is processed
     sleep(VISITOR_FREQUENCY + 1);
@@ -55,35 +59,28 @@ int main(int argc, char* argv[]) {
     while (state->visitorCount || !stop) {
         int count = 0;
         int foundAdult = 0;
-        pid_t visitorPid;
+        QueueMessage msg;
 
         // first loop to find at least one adult of any priority
         while (!foundAdult && !stop) {
-            if (msgrcv(visitorGuideMsgQueueId, &msg,
-                    sizeof(QueueMessage) - sizeof(long),
-                    PRIORITY_HIGH_ADULT, IPC_NOWAIT) != -1
-                || msgrcv(visitorGuideMsgQueueId, &msg,
-                    sizeof(QueueMessage) - sizeof(long),
-                    PRIORITY_NORMAL_ADULT, IPC_NOWAIT) != -1) {
+            if (findAdult(visitorGuideMsgQueueId, &msg)) {
                 foundAdult = 1;
-                visitorPid = msg.pid;
+                pid_t visitorPid = msg.pid;
                 if (stop) {
                     kill(visitorPid, SIGTERM);
                     continue;
                 }
                 visitors[count] = visitorPid;
                 count++;
-                kill(visitorPid, SIGUSR1);
+                signalVisitor(visitorPid, SIGUSR1);
             }
             else { usleep(100000); } // 100ms
         }
 
         // second loop to process the remaining people based on priority
         while ( count < routeCapacity &&
-            msgrcv(visitorGuideMsgQueueId, &msg,
-                sizeof(QueueMessage) - sizeof(long),
-                -PRIORITY_NORMAL_ADULT, IPC_NOWAIT) != -1) {
-            visitorPid = msg.pid;
+                receiveMessage(visitorGuideMsgQueueId, &msg, -PRIORITY_NORMAL_ADULT)) {
+            pid_t visitorPid = msg.pid;
             // tour is closed, reject the visitor from the queue
             if (stop) {
                 kill(visitorPid, SIGTERM);
@@ -97,11 +94,7 @@ int main(int argc, char* argv[]) {
 
         if (count > 0) {
             PRINT("Waiting for %d visitors to cross the bridge", count);
-
-            // wait for all visitors in current group to cross the bridge
-            for (int i = 0; i < count; i++) {
-                P(semId, guideBridgeSem);
-            }
+            waitForBridgeCrossing(semId, guideBridgeSem, count);
             PRINT("%d visitors crossed the bridge to enter", count);
 
             if (!stop) {
@@ -109,18 +102,41 @@ int main(int argc, char* argv[]) {
                 sleep(routeDuration);
                 PRINT("Tour finished");
             }
-            for (int i = 0; i < count; i++) {
-                kill(visitors[i], SIGUSR1);
-            }
 
-            // wait for all visitors to exit and cross the bridge
-            for (int i = 0; i < count; i++) {
-                P(semId, guideBridgeSem);
-            }
+            signalVisitors(visitors, count, SIGUSR1);
+
+            waitForBridgeCrossing(semId, guideBridgeSem, count);
             PRINT("%d visitors left the cave", count);
         }
     }
 
+    deattachSharedMemory(state);
     PRINT("Finishing...");
     return 0;
+}
+
+int receiveMessage(int queueId, QueueMessage* msg, long msgType) {
+    return msgrcv(queueId, msg, sizeof(QueueMessage) - sizeof(long),
+                  msgType, IPC_NOWAIT) != -1;
+}
+
+int findAdult(int queueId, QueueMessage* msg) {
+    return receiveMessage(queueId, msg, PRIORITY_HIGH_ADULT) ||
+           receiveMessage(queueId, msg, PRIORITY_NORMAL_ADULT);
+}
+
+void waitForBridgeCrossing(int semId, int bridgeSem, int count) {
+    for (int i = 0; i < count; i++) {
+        P(semId, bridgeSem);
+    }
+}
+
+void signalVisitor(pid_t visitorPid, int signal) {
+    kill(visitorPid, signal);
+}
+
+void signalVisitors(pid_t* visitors, int count, int signal) {
+    for (int i = 0; i < count; i++) {
+        signalVisitor(visitors[i], signal);
+    }
 }

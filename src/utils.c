@@ -27,6 +27,16 @@ int getShmid(key_t shmKey, int flag) {
     return shmid;
 }
 
+int createSharedMemory(int keyId) {
+    key_t key = generateKey(keyId);
+    return getShmid(key, IPC_CREAT | 0600);
+}
+
+int openSharedMemory(int keyId) {
+    key_t key = generateKey(keyId);
+    return getShmid(key, 0);
+}
+
 sharedState* attachSharedMemory(int shmid) {
     sharedState* state = shmat(shmid, NULL, 0);
     if (state == (sharedState*)-1) {
@@ -59,6 +69,16 @@ int getMsgQueueId(key_t msgKey, int flag) {
     return msgQueueId;
 }
 
+int createMsgQueue(int keyId) {
+    key_t key = generateKey(keyId);
+    return getMsgQueueId(key, IPC_CREAT | 0600);
+}
+
+int openMsgQueue(int keyId) {
+    key_t key = generateKey(keyId);
+    return getMsgQueueId(key, 0);
+}
+
 void destroyMsgQueue(int msgQueueId) {
     if (msgctl(msgQueueId, IPC_RMID, NULL) == -1) {
         PRINT_ERR("msgctl");
@@ -73,6 +93,16 @@ int getSemaphoreId(key_t semKey, int count, int flag) {
         exit(1);
     }
     return semId;
+}
+
+int createSemaphore(int keyId, int count) {
+    key_t key = generateKey(keyId);
+    return getSemaphoreId(key, count, IPC_CREAT | 0600);
+}
+
+int openSemaphore(int keyId, int count) {
+    key_t key = generateKey(keyId);
+    return getSemaphoreId(key, count, 0);
 }
 
 void initializeSemaphore(int semId, int semNum ,int initialValue) {

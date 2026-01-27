@@ -11,21 +11,22 @@ void handleSignal(int sig) {
     if (sig == SIGTERM) stop = 1;
 }
 
-int main(int argc, char* argv[]) {
-    double price;
+double calculateTicketPrice(int age, int isRepeat);
 
+void processTicket(sharedState* state, const TicketMessage* msg);
+
+
+int main(int argc, char* argv[]) {
     PRINT("I'm the cashier!");
 
     struct sigaction signalHandler = {0};
     signalHandler.sa_handler = handleSignal;
     sigaction(SIGTERM, &signalHandler, NULL);
 
-    key_t key = generateKey(SHM_KEY_ID);
-    int shmid = getShmid(key, 0);
+    int shmid = openSharedMemory(SHM_KEY_ID);
     sharedState* state = attachSharedMemory(shmid);
 
-    key = generateKey(VISITOR_CASHIER_QUEUE_KEY_ID);
-    int visitorCashierMsgQueueId = getMsgQueueId(key, 0);
+    int visitorCashierMsgQueueId = openMsgQueue(VISITOR_CASHIER_QUEUE_KEY_ID);
 
     while (!stop) {
         TicketMessage msg;
@@ -35,16 +36,21 @@ int main(int argc, char* argv[]) {
             PRINT_ERR("msgrcv");
             continue;
         }
-        // PRINT("Visitor age %d", msg.age);
-        if (msg.age < 3) { price = 0; }
-        else if (msg.isRepeat) { price = BASE_TICKET_PRICE * 0.5; }
-        else { price = BASE_TICKET_PRICE; }
-
-        // PRINT("Ticket price: %.2f", price);
-        state->ticketsSold++;
-        state->moneyEarned += price;
+        processTicket(state, &msg);
     }
 
     deattachSharedMemory(state);
     PRINT("Finishing...");
+}
+
+double calculateTicketPrice(int age, int isRepeat) {
+    if (age < 3) return 0;
+    if (isRepeat) return BASE_TICKET_PRICE * 0.5;
+    return BASE_TICKET_PRICE;
+}
+
+void processTicket(sharedState* state, const TicketMessage* msg) {
+    double price = calculateTicketPrice(msg->age, msg->isRepeat);
+    state->ticketsSold++;
+    state->moneyEarned += price;
 }

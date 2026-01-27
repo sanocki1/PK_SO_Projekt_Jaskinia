@@ -6,16 +6,15 @@
 #include "config.h"
 #include "utils.h"
 
+void terminateProcesses(pid_t cashierPid, pid_t guide1Pid, pid_t guide2Pid);
+
 int main(int argc, char* argv[]) {
     PRINT("I'm the guard!");
 
-    key_t shmKey = generateKey(SHM_KEY_ID);
-    int shmid = getShmid(shmKey, 0);
+    int shmid = openSharedMemory(SHM_KEY_ID);
     sharedState* state = attachSharedMemory(shmid);
 
-    int Tp = state->Tp;
-    int Tk = state->Tk;
-    int secondsOpen = (Tk - Tp) * SECONDS_PER_HOUR;
+    int secondsOpen = (state->Tk - state->Tp) * SECONDS_PER_HOUR;
 
     pid_t cashierPid = atoi(argv[1]);
     pid_t guide1Pid = atoi(argv[2]);
@@ -27,11 +26,15 @@ int main(int argc, char* argv[]) {
     state->closing = 1;
     PRINT("Tour is closed!");
 
-    kill(cashierPid, SIGTERM);
-    kill(guide1Pid, SIGTERM);
-    kill(guide2Pid, SIGTERM);
+    terminateProcesses(cashierPid, guide1Pid, guide2Pid);;
     deattachSharedMemory(state);
 
     PRINT("Finishing...");
     return 0;
+}
+
+void terminateProcesses(pid_t cashierPid, pid_t guide1Pid, pid_t guide2Pid) {
+    kill(cashierPid, SIGTERM);
+    kill(guide1Pid, SIGTERM);
+    kill(guide2Pid, SIGTERM);
 }

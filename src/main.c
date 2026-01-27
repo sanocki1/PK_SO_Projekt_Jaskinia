@@ -11,116 +11,69 @@
 #include "logger.h"
 #include "utils.h"
 
+int validateParameters();
+
+ulong getMaxVisitorCount();
+
+void initializeSharedState(sharedState*);
+
+void initializeSemaphores(int semId);
+
+pid_t spawnProcess(const char* executable, char* const args[]);
+
+void spawnVisitorGroup(int groupSize);
+
+void cleanupResources(int visitorCashierMsgQueueId, int visitorGuideMsgQueueId1,
+                            int visitorGuideMsgQueueId2, sharedState* state,
+                            int shmid, int semId);
+
+
 int main(int argc, char* argv[]) {
     PRINT("I'm the main process!");
 
-    if (OPENING_TIME < 0 || CLOSING_TIME > 24 || OPENING_TIME >= CLOSING_TIME || SECONDS_PER_HOUR < 1) {
-        PRINT_ERR("Invalid time parameters");
-        return 1;
-    }
-    if (ROUTE_1_CAPACITY < BRIDGE_CAPACITY || ROUTE_2_CAPACITY < BRIDGE_CAPACITY) {
-        PRINT_ERR("Invalid capacity parameters");
-        return 1;
-    }
-    if (ROUTE_1_DURATION < 0 || ROUTE_2_DURATION < 0 || BRIDGE_DURATION < 0) {
-        PRINT_ERR("Invalid duration parameters");
+    if (!validateParameters()) {
         return 1;
     }
 
-    struct rlimit limit;
-    if (getrlimit(RLIMIT_NPROC, &limit) == -1) {
-        PRINT_ERR("getrlimit");
+    ulong maxVisitorCount = getMaxVisitorCount();
+    if (maxVisitorCount == 0) {
         return 1;
     }
-    if (limit.rlim_cur < (MAIN_PROCESSES_COUNT + MAX_VISITOR_GROUP_SIZE)) {
-        PRINT_ERR("Not enough process limit to run the simulation\n");
-        return 1;
-    }
-    ulong maxVisitorCount = (limit.rlim_cur - MAIN_PROCESSES_COUNT);
 
     srand(time(NULL) + getpid());
 
-    key_t key = generateKey(SHM_KEY_ID);
-    int shmid = getShmid(key, IPC_CREAT | 0600);
+    int shmid = createSharedMemory(SHM_KEY_ID);
     sharedState* state = attachSharedMemory(shmid);
 
-    key = generateKey(VISITOR_CASHIER_QUEUE_KEY_ID);
-    int visitorCashierMsgQueueId = getMsgQueueId(key, IPC_CREAT | 0600);
+    int visitorCashierMsgQueueId = createMsgQueue(VISITOR_CASHIER_QUEUE_KEY_ID);
+    int visitorGuideMsgQueueId1 = createMsgQueue(VISITOR_GUIDE_QUEUE_KEY_ID_1);
+    int visitorGuideMsgQueueId2 = createMsgQueue(VISITOR_GUIDE_QUEUE_KEY_ID_2);
 
-    key = generateKey(VISITOR_GUIDE_QUEUE_KEY_ID_1);
-    int visitorGuideMsgQueueId1 = getMsgQueueId(key, IPC_CREAT | 0600);
+    int semId = createSemaphore(SEMAPHORE_KEY_ID, SEM_COUNT);
+    initializeSemaphores(semId);
+    initializeSharedState(state);
 
-    key = generateKey(VISITOR_GUIDE_QUEUE_KEY_ID_2);
-    int visitorGuideMsgQueueId2 = getMsgQueueId(key, IPC_CREAT | 0600);
+    char cashierPidStr[16], guide1PidStr[16], guide2PidStr[16];
+    char* cashierArgs[] = {"cashier", NULL};
+    char* guide1Args[] = {"guide", "1", NULL};
+    char* guide2Args[] = {"guide", "2", NULL};
 
-    key = generateKey(SEMAPHORE_KEY_ID);
-    int semId = getSemaphoreId(key, SEM_COUNT, IPC_CREAT | 0600);
-    initializeSemaphore(semId,BRIDGE_SEM_1, BRIDGE_CAPACITY);
-    initializeSemaphore(semId,BRIDGE_SEM_2, BRIDGE_CAPACITY);
-    initializeSemaphore(semId,VISITOR_COUNT_SEM, 1);
-    initializeSemaphore(semId,GUIDE_BRIDGE_SEM_1, 0);
-    initializeSemaphore(semId,GUIDE_BRIDGE_SEM_2, 0);
-
-    state->Tp = OPENING_TIME;
-    state->Tk = CLOSING_TIME;
-    state->closing = 0;
-    state->moneyEarned = 0;
-    state->ticketsSold = 0;
-
-    pid_t cashierPid = fork();
-    if (cashierPid == -1) {
-        PRINT_ERR("cashier fork");
-    }
-    if (cashierPid == 0) {
-        execl("./cashier", "cashier", NULL);
-        PRINT_ERR("cashier execl failed");
-    }
-    char cashierPidStr[16];
+    pid_t cashierPid = spawnProcess("./cashier", cashierArgs);
     snprintf(cashierPidStr, sizeof(cashierPidStr), "%d", cashierPid);
 
-    pid_t guide1Pid = fork();
-    if (guide1Pid == -1) {
-        PRINT_ERR("guide fork");
-    }
-    if (guide1Pid == 0) {
-        execl("./guide", "guide", "1", NULL);
-        PRINT_ERR("guide execl failed");
-    }
-    char guide1PidStr[16];
+    pid_t guide1Pid = spawnProcess("./guide", guide1Args);
     snprintf(guide1PidStr, sizeof(guide1PidStr), "%d", guide1Pid);
 
-    pid_t guide2Pid = fork();
-    if (guide2Pid == -1) {
-        PRINT_ERR("guide fork");
-    }
-    if (guide2Pid == 0) {
-        execl("./guide", "guide", "2", NULL);
-        PRINT_ERR("guide execl failed");
-    }
-    char guide2PidStr[16];
+    pid_t guide2Pid = spawnProcess("./guide", guide2Args);
     snprintf(guide2PidStr, sizeof(guide2PidStr), "%d", guide2Pid);
 
-    pid_t guardPid = fork();
-    if (guardPid == -1) {
-        PRINT_ERR("guard fork");
-    }
-    if (guardPid == 0) {
-        execl("./guard", "guard", cashierPidStr, guide1PidStr, guide2PidStr, NULL);
-        PRINT_ERR("guard execl failed");
-    }
+    char* guardArgs[] = {"guard", cashierPidStr, guide1PidStr, guide2PidStr, NULL};
+    spawnProcess("./guard", guardArgs);
 
     while (!state->closing) {
         int groupCount = rand() % MAX_VISITOR_GROUP_SIZE + 1;
-        if (state->visitorCount + groupCount > maxVisitorCount) continue;
-        for (int i = 0; i < groupCount; i++) {
-            pid_t visitorPid = fork();
-            if (visitorPid == -1) {
-                PRINT_ERR("visitor fork");
-            }
-            if (visitorPid == 0) {
-                execl("./visitor", "visitor",   NULL);
-                PRINT_ERR("visitor execl failed");
-            }
+        if (state->visitorCount + groupCount <= maxVisitorCount) {
+            spawnVisitorGroup(groupCount);
         }
         sleep(VISITOR_FREQUENCY);
     }
@@ -139,4 +92,83 @@ int main(int argc, char* argv[]) {
 
     PRINT("Finishing...");
     return 0;
+}
+
+
+int validateParameters() {
+    if (OPENING_TIME < 0 || CLOSING_TIME > 24 || OPENING_TIME >= CLOSING_TIME || SECONDS_PER_HOUR < 1) {
+        PRINT_ERR("Invalid time parameters");
+        return 0;
+    }
+    if (ROUTE_1_CAPACITY < BRIDGE_CAPACITY || ROUTE_2_CAPACITY < BRIDGE_CAPACITY) {
+        PRINT_ERR("Invalid capacity parameters");
+        return 0;
+    }
+    if (ROUTE_1_DURATION < 0 || ROUTE_2_DURATION < 0 || BRIDGE_DURATION < 0) {
+        PRINT_ERR("Invalid duration parameters");
+        return 0;
+    }
+    return 1;
+}
+
+ulong getMaxVisitorCount() {
+    struct rlimit limit;
+    if (getrlimit(RLIMIT_NPROC, &limit) == -1) {
+        PRINT_ERR("getrlimit");
+        return 0;
+    }
+    if (limit.rlim_cur < (MAIN_PROCESSES_COUNT + MAX_VISITOR_GROUP_SIZE)) {
+        PRINT_ERR("Not enough process limit to run the simulation");
+        return 0;
+    }
+    return limit.rlim_cur - MAIN_PROCESSES_COUNT;
+}
+
+void initializeSharedState(sharedState* state) {
+    state->Tp = OPENING_TIME;
+    state->Tk = CLOSING_TIME;
+    state->closing = 0;
+    state->moneyEarned = 0;
+    state->ticketsSold = 0;
+    state->visitorCount = 0;
+}
+
+void initializeSemaphores(int semId) {
+    initializeSemaphore(semId, BRIDGE_SEM_1, BRIDGE_CAPACITY);
+    initializeSemaphore(semId, BRIDGE_SEM_2, BRIDGE_CAPACITY);
+    initializeSemaphore(semId, VISITOR_COUNT_SEM, 1);
+    initializeSemaphore(semId, GUIDE_BRIDGE_SEM_1, 0);
+    initializeSemaphore(semId, GUIDE_BRIDGE_SEM_2, 0);
+}
+
+pid_t spawnProcess(const char* executable, char* const args[]) {
+    pid_t pid = fork();
+    if (pid == -1) {
+        PRINT_ERR("%s fork", executable);
+        return -1;
+    }
+    if (pid == 0) {
+        execl(executable, args[0], args[1], args[2], args[3], args[4], NULL);
+        PRINT_ERR("%s execl failed", executable);
+        exit(1);
+    }
+    return pid;
+}
+
+void spawnVisitorGroup(int groupSize) {
+    for (int i = 0; i < groupSize; i++) {
+        char* args[] = {"visitor", NULL};
+        spawnProcess("./visitor", args);
+    }
+}
+
+void cleanupResources(int visitorCashierMsgQueueId, int visitorGuideMsgQueueId1,
+                            int visitorGuideMsgQueueId2, sharedState* state,
+                            int shmid, int semId) {
+    destroyMsgQueue(visitorCashierMsgQueueId);
+    destroyMsgQueue(visitorGuideMsgQueueId1);
+    destroyMsgQueue(visitorGuideMsgQueueId2);
+    deattachSharedMemory(state);
+    destroySharedMemory(shmid);
+    destroySemaphore(semId);
 }

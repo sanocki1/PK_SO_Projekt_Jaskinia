@@ -15,6 +15,21 @@ void handleSignal(int sig) {
     if (sig == SIGTERM) rejected = 1;
 }
 
+int selectRoute(int age, int isRepeat, int previousRoute);
+
+long getQueuePriority(int age, int isRepeat);
+
+void buyTicket(int queueId, int age, int isRepeat);
+
+void joinQueue(int queueId, pid_t pid, long priority);
+
+void waitForSignal(void);
+
+void crossBridge(int semId, int bridgeSem);
+
+void updateVisitorCount(sharedState* state, int semId, int delta);
+
+
 int main(int argc, char* argv[]) {
     pid_t pid = getpid();
     srand(time(NULL) + pid);
@@ -28,99 +43,43 @@ int main(int argc, char* argv[]) {
     sigaction(SIGUSR1, &signalHandler, NULL);
     sigaction(SIGTERM, &signalHandler, NULL);
 
-    key_t key = generateKey(SHM_KEY_ID);
-    int shmid = getShmid(key, 0);
+    int shmid = openSharedMemory(SHM_KEY_ID);
     sharedState* state = attachSharedMemory(shmid);
 
-    key = generateKey(VISITOR_CASHIER_QUEUE_KEY_ID);
-    int visitorCashierMsgQueueId = getMsgQueueId(key, 0);
+    int visitorCashierMsgQueueId = openMsgQueue(VISITOR_CASHIER_QUEUE_KEY_ID);
+    int visitorGuideMsgQueueId1 = openMsgQueue(VISITOR_GUIDE_QUEUE_KEY_ID_1);
+    int visitorGuideMsgQueueId2 = openMsgQueue(VISITOR_GUIDE_QUEUE_KEY_ID_2);
+    int semId = openSemaphore(SEMAPHORE_KEY_ID, SEM_COUNT);
 
-    key = generateKey(VISITOR_GUIDE_QUEUE_KEY_ID_1);
-    int visitorGuideMsgQueueId1 = getMsgQueueId(key, 0);
-
-    key = generateKey(VISITOR_GUIDE_QUEUE_KEY_ID_2);
-    int visitorGuideMsgQueueId2 = getMsgQueueId(key, 0);
-
-    key = generateKey(SEMAPHORE_KEY_ID);
-    int semId = getSemaphoreId(key, SEM_COUNT, 0);
-
-    P(semId, VISITOR_COUNT_SEM);
-    state->visitorCount++;
-    V(semId, VISITOR_COUNT_SEM);
+    updateVisitorCount(state, semId, 1);
 
     while (!state->closing && wantsToVisit) {
-        if (age < 8 || age > 75) routeToVisit = 2;
-        else if (isRepeat) routeToVisit = routeToVisit == 1 ? 2 : 1;
-        else routeToVisit = rand() % 2 + 1;
+        routeToVisit = selectRoute(age, isRepeat, routeToVisit);
         canProceed = 0;
 
-        TicketMessage ticketMessage;
-        ticketMessage.mtype = 1;
-        ticketMessage.age = age;
-        ticketMessage.isRepeat = isRepeat;
-        if (msgsnd(visitorCashierMsgQueueId, &ticketMessage,
-            sizeof(TicketMessage) - sizeof(long), 0) == -1) {
-            PRINT_ERR("msgsnd");
-            return 1;
-            }
+        buyTicket(visitorCashierMsgQueueId, age, isRepeat);
 
-        // send a message to guide that you want to enter
-        QueueMessage queueMessage;
-        if (age >= 8 && isRepeat) queueMessage.mtype = PRIORITY_HIGH_ADULT;
-        else if (age < 8 && isRepeat) queueMessage.mtype = PRIORITY_HIGH_CHILD;
-        else if (age >= 8 && !isRepeat) queueMessage.mtype = PRIORITY_NORMAL_ADULT;
-        else queueMessage.mtype = PRIORITY_NORMAL_CHILD;
-        queueMessage.pid = pid;
-
-        int visitorGuideMsgQueueId;
-        if (routeToVisit == 1) visitorGuideMsgQueueId = visitorGuideMsgQueueId1;
-        else visitorGuideMsgQueueId = visitorGuideMsgQueueId2;
-        if (msgsnd(visitorGuideMsgQueueId, &queueMessage,
-            sizeof(QueueMessage) - sizeof(long), 0) == -1) {
-            PRINT_ERR("msgsnd");
-            return 1;
-            }
+        long priority = getQueuePriority(age, isRepeat);
+        int queueId = routeToVisit == 1 ? visitorGuideMsgQueueId1 : visitorGuideMsgQueueId2;
+        joinQueue(queueId, pid, priority);
 
         // wait for guide signal to enter the bridge/cave
-        while (!canProceed && !rejected) {
-            pause();
-        }
-        if (rejected) {
-            break;
-        }
+        waitForSignal();
+        if (rejected) break;
         canProceed = 0;
 
-        // uses different semaphores based on the route chosen
-        int bridgeSemaphore;
-        int guideBridgeSemaphore;
-        if (routeToVisit == 1) {
-            bridgeSemaphore = BRIDGE_SEM_1;
-            guideBridgeSemaphore = GUIDE_BRIDGE_SEM_1;
-        }
-        else {
-            bridgeSemaphore = BRIDGE_SEM_2;
-            guideBridgeSemaphore = GUIDE_BRIDGE_SEM_2;
-        }
+        int bridgeSemaphore = routeToVisit == 1 ? BRIDGE_SEM_1 : BRIDGE_SEM_2;
+        int guideBridgeSemaphore = routeToVisit == 1 ? GUIDE_BRIDGE_SEM_1 : GUIDE_BRIDGE_SEM_2;
 
-        // bridge waiting semaphore
-        P(semId, bridgeSemaphore);
-        sleep(BRIDGE_DURATION);
-        V(semId, bridgeSemaphore);
-
-        //signal the guide that crossed the bridge
+        // wait for bridge capacity to enter, then signal guide
+        crossBridge(semId, bridgeSemaphore);
         V(semId, guideBridgeSemaphore);
 
         //wait for guide signal that the tour has ended
-        while (!canProceed) {
-            pause();
-        }
+        waitForSignal();
 
-        // bridge waiting semaphore to leave the cave
-        P(semId, bridgeSemaphore);
-        sleep(BRIDGE_DURATION);
-        V(semId, bridgeSemaphore);
-
-        // inform guide that you have crossed back
+        // wait for bridge capacity to leave, then signal guide
+        crossBridge(semId, bridgeSemaphore);
         V(semId, guideBridgeSemaphore);
 
 
@@ -131,12 +90,62 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    P(semId, VISITOR_COUNT_SEM);
-    state->visitorCount--;
-    V(semId, VISITOR_COUNT_SEM);
+    updateVisitorCount(state, semId, -1);
     PRINT("%d leaving, visitor count after leaving = %d", pid, state->visitorCount);
 
     deattachSharedMemory(state);
-
     return 0;
+}
+
+
+int selectRoute(int age, int isRepeat, int previousRoute) {
+    if (age < 8 || age > 75) return 2;
+    if (isRepeat) return previousRoute == 1 ? 2 : 1;
+    return rand() % 2 + 1;
+}
+
+long getQueuePriority(int age, int isRepeat) {
+    if (age >= 8 && isRepeat) return PRIORITY_HIGH_ADULT;
+    if (age < 8 && isRepeat) return PRIORITY_HIGH_CHILD;
+    if (age >= 8 && !isRepeat) return PRIORITY_NORMAL_ADULT;
+    return PRIORITY_NORMAL_CHILD;
+}
+
+void buyTicket(int queueId, int age, int isRepeat) {
+    TicketMessage msg;
+    msg.mtype = 1;
+    msg.age = age;
+    msg.isRepeat = isRepeat;
+    if (msgsnd(queueId, &msg, sizeof(TicketMessage) - sizeof(long), 0) == -1) {
+        PRINT_ERR("msgsnd ticket");
+        exit(1);
+    }
+}
+
+void joinQueue(int queueId, pid_t pid, long priority) {
+    QueueMessage msg;
+    msg.mtype = priority;
+    msg.pid = pid;
+    if (msgsnd(queueId, &msg, sizeof(QueueMessage) - sizeof(long), 0) == -1) {
+        PRINT_ERR("msgsnd queue");
+        exit(1);
+    }
+}
+
+void waitForSignal(void) {
+    while (!canProceed && !rejected) {
+        pause();
+    }
+}
+
+void crossBridge(int semId, int bridgeSem) {
+    P(semId, bridgeSem);
+    sleep(BRIDGE_DURATION);
+    V(semId, bridgeSem);
+}
+
+void updateVisitorCount(sharedState* state, int semId, int delta) {
+    P(semId, VISITOR_COUNT_SEM);
+    state->visitorCount += delta;
+    V(semId, VISITOR_COUNT_SEM);
 }
