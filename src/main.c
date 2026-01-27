@@ -96,16 +96,25 @@ int main(int argc, char* argv[]) {
 
 
 int validateParameters() {
-    if (OPENING_TIME < 0 || CLOSING_TIME > 24 || OPENING_TIME >= CLOSING_TIME || SECONDS_PER_HOUR < 1) {
+    if (OPENING_TIME < 0 || CLOSING_TIME > 24 || OPENING_TIME >= CLOSING_TIME || SECONDS_PER_HOUR < 1 ||
+        SECONDS_PER_HOUR <= 0 || VISITOR_FREQUENCY <= 0) {
         PRINT_ERR("Invalid time parameters");
         return 0;
     }
-    if (ROUTE_1_CAPACITY < BRIDGE_CAPACITY || ROUTE_2_CAPACITY < BRIDGE_CAPACITY) {
+    if (ROUTE_1_CAPACITY <= BRIDGE_CAPACITY || ROUTE_2_CAPACITY <= BRIDGE_CAPACITY || BRIDGE_CAPACITY <= 0) {
         PRINT_ERR("Invalid capacity parameters");
         return 0;
     }
-    if (ROUTE_1_DURATION < 0 || ROUTE_2_DURATION < 0 || BRIDGE_DURATION < 0) {
+    if (ROUTE_1_DURATION <= 0 || ROUTE_2_DURATION <= 0 || BRIDGE_DURATION <= 0) {
         PRINT_ERR("Invalid duration parameters");
+        return 0;
+    }
+    if (MAX_VISITOR_GROUP_SIZE <= 0) {
+        PRINT_ERR("Invalid visitor group size parameters");
+        return 0;
+    }
+    if (BASE_TICKET_PRICE <= 0) {
+        PRINT_ERR("Invalid ticket price parameters");
         return 0;
     }
     return 1;
