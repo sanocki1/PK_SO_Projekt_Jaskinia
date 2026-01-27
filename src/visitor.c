@@ -1,3 +1,16 @@
+/**
+* @file visitor.c
+* @brief Proces odwiedzającego.
+*
+* Proces:
+* - losuje wiek
+* - kupuje bilet
+* - dołącza do kolejki przewodnika
+* - przechodzi most
+* - uczestniczy w zwiedzaniu
+* - opcjonalnie powtarza wizytę
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -15,18 +28,25 @@ void handleSignal(int sig) {
     if (sig == SIGTERM) rejected = 1;
 }
 
+/** @brief Wybiera trasę do zwiedzania na podstawie wieku i historii wizyt. */
 int selectRoute(int age, int isRepeat, int previousRoute);
 
+/** @brief Zwraca priorytet do kolejki do jaskini na podstawie wieku i tego czy jest to powtórna wizyta. */
 long getQueuePriority(int age, int isRepeat);
 
+/** @brief Wysyła wiadomość do kasjera z danymi potrzebnymi do wyceny. */
 void buyTicket(int queueId, int age, int isRepeat);
 
+/** @brief Dołącza do kolejki do jaskini. */
 void joinQueue(int queueId, pid_t pid, long priority);
 
+/** @brief Czeka na sygnał od prowadzącego. */
 void waitForSignal(void);
 
+/** @brief Przechodzi przez most, zajmując miejsce na semaforze mostu przez określony czas. */
 void crossBridge(int semId, int bridgeSem);
 
+/** @biref Aktualizuje globalną ilość zwiedzających. */
 void updateVisitorCount(sharedState* state, int semId, int delta);
 
 
@@ -114,7 +134,6 @@ int main(int argc, char* argv[]) {
     deattachSharedMemory(state);
     return 0;
 }
-
 
 int selectRoute(int age, int isRepeat, int previousRoute) {
     if (age < 8 || age > 75) return 2;

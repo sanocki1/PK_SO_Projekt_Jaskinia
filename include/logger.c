@@ -1,3 +1,10 @@
+/**
+* @file logger.c
+* @brief Logger zdarzeń symulacji.
+*
+* Zapewnia bezpieczny, synchronizowany zapis
+* do pliku oraz na standardowe wyjście.
+*/
 #include "logger.h"
 #include <stdio.h>
 #include <stdarg.h>
@@ -9,10 +16,12 @@
 
 static int logSemId = -1;
 
+/** @brief Inicjalizuje logger, ustawiając semafor. */
 void initLogger(int semId) {
     logSemId = semId;
 }
 
+/** @brief Czyści logi symulacji. */
 void clearLog() {
     FILE* logFile = fopen(LOG_FILE, "w");
     if (logFile != NULL) {
@@ -20,6 +29,7 @@ void clearLog() {
     }
 }
 
+/** @brief Zapisuje komunikat do logu i na standardowe wyjście. */
 void writeLog(const char* color, const char* processName, pid_t pid,
                      const char* fmt, va_list args) {
     if (logSemId == -1) {
@@ -47,6 +57,7 @@ void writeLog(const char* color, const char* processName, pid_t pid,
     V(logSemId, LOG_SEM);
 }
 
+/** @brief Loguje zwykły komunikat. */
 void logMessage(const char* color, const char* processName,
                 const char* fmt, ...) {
     va_list args;
@@ -55,6 +66,7 @@ void logMessage(const char* color, const char* processName,
     va_end(args);
 }
 
+/** @brief Loguje komunikat błedu. */
 void logError(const char* processName, const char* fmt, ...) {
     va_list args;
     va_start(args, fmt);

@@ -27,6 +27,7 @@
 #define EINTR 4
 #define MAIN_PROCESSES_COUNT 5 // main, cashier, guard, 2 guides
 
+/** @brief Pamięc wspóldzielona */
 typedef struct {
     int Tp; // opening time
     int Tk; // closing time
@@ -36,12 +37,14 @@ typedef struct {
     int visitorCount;
 } sharedState;
 
+/** @brief Komunikat wysłany do kasjera */
 typedef struct {
     long mtype;
     int age;
     int isRepeat;
 } TicketMessage;
 
+/** @brief Komunikat wysłany do przewodnika */
 typedef struct {
     long mtype;
     int pid;

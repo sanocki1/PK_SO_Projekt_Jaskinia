@@ -1,3 +1,12 @@
+/**
+* @file guard.c
+* @brief Proces strażnika.
+*
+* Proces:
+* - kontroluje czasu otwarcia jaskini
+* - ustawia flagę zamknięcia symulacji
+* - kończy procesy kasjera i przewodników
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -6,6 +15,7 @@
 #include "config.h"
 #include "utils.h"
 
+/** @brief Wysyła sygnały zakończenia do procesów symulacji. */
 void terminateProcesses(pid_t cashierPid, pid_t guide1Pid, pid_t guide2Pid);
 
 int main(int argc, char* argv[]) {

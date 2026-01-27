@@ -1,3 +1,12 @@
+/**
+* @file cashier.c
+* @brief Proces kasjera.
+*
+*Proces:
+* - odbiera komunikaty od odwiedzających
+* - oblicza cenę biletu
+* - aktualizuje wspólny stan symulacji
+*/
 #include <stdio.h>
 #include <sys/msg.h>
 #include <errno.h>
@@ -11,9 +20,10 @@ volatile sig_atomic_t stop = 0;
 void handleSignal(int sig) {
     if (sig == SIGTERM) stop = 1;
 }
-
+/** @brief Oblicza cenę biletu dla odwiedzającego. */
 double calculateTicketPrice(int age, int isRepeat);
 
+/** @brief Przetwarza zakup biletu i aktualizuje stan symulacji. */
 void processTicket(sharedState* state, const TicketMessage* msg);
 
 

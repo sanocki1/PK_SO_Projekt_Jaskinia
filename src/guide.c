@@ -1,3 +1,14 @@
+/**
+* @file guide.c
+* @brief Proces przewodnika.
+*
+* Proces:
+* - obsługuje jedną z tras
+* - pobiera odwiedzających z kolejki komunikatów
+* - dba o obecność co najmniej jednego dorosłego w grupie
+* - synchronizuje przejścia przez most za pomocą semaforów
+* - prowadzi zwiedzanie trasy i wypuszcza grupę po zakończeniu.
+*/
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,15 +24,19 @@ volatile sig_atomic_t stop = 0;
 void handleSignal(int sig) {
     if (sig == SIGTERM) stop = 1;
 }
-
+/** @brief Odbiera komunikat z kolejki. */
 int receiveMessage(int queueId, QueueMessage* msg, long msgType);
 
+/** @brief Wyszukuje dorosłego zwiedzającego w kolejce. */
 int findAdult(int queueId, QueueMessage* msg);
 
+/** @brief Wysyła sygnał do pojedynczego zwiedzającego. */
 void signalVisitor(pid_t visitorPid, int signal);
 
+/** @brief Wysyła sygnał do grupy zwiedzających. */
 void signalVisitors(pid_t* visitors, int count, int signal);
 
+/** @brief Oczekuje na przejście grupy przez most. */
 void waitForBridgeCrossing(int semId, int bridgeSem, int count);
 
 int main(int argc, char* argv[]) {

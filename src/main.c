@@ -1,8 +1,17 @@
+/**
+* @file main.c
+* @brief Główny proces symulacji jaskini.
+*
+* Odpowiada za:
+* - inicjalizację pamięci współdzielonej, semaforów i kolejek komunikatów
+* - uruchomienie procesów: kasjera, strażnika, przewodników i zwiedzających
+* - generowanie grup zwiedzających
+* - sprzątanie zasobów IPC po zakończeniu symulacji
+*/
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <sys/msg.h>
 #include <sys/wait.h>
 #include <time.h>
 #include <sys/types.h>
@@ -11,18 +20,25 @@
 #include "logger.h"
 #include "utils.h"
 
+/** @brief Sprawdza poprawność parametrów symulacji. */
 int validateParameters();
 
+/** @brief Oblicza maksymalną liczbę odwiedzających możliwą do obsługi. */
 ulong getMaxVisitorCount();
 
+/** @brief Inicjalizuje pamięć współdzieloną. */
 void initializeSharedState(sharedState*);
 
+/** @brief Inicjalizuje semafory. */
 void initializeSemaphores(int semId);
 
+/** @brief Tworzy nowy proces i uruchamia wskazany program. */
 pid_t spawnProcess(const char* executable, char* const args[]);
 
+/** @brief Tworzy wskazaną ilośc procesów zwiedzających */
 void spawnVisitorGroup(int groupSize);
 
+/** @brief Czyści dane z IPC */
 void cleanupResources();
 
 static int visitorCashierMsgQueueId;
