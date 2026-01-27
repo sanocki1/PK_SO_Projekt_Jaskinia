@@ -6,7 +6,9 @@
 #define SHM_KEY_ID 1
 #define VISITOR_CASHIER_QUEUE_KEY_ID 2
 #define SEMAPHORE_KEY_ID 3
-#define VISITOR_GUIDE_QUEUE_KEY_ID 4
+#define VISITOR_GUIDE_QUEUE_KEY_ID_1 4
+#define VISITOR_GUIDE_QUEUE_KEY_ID_2 5
+
 
 // children before adults, so after 1 adult is found queue fills up with
 // as many children as possible so even less chance of cloging the queue
@@ -15,10 +17,12 @@
 #define PRIORITY_NORMAL_CHILD 3
 #define PRIORITY_NORMAL_ADULT 4
 
-#define SEM_COUNT 3
-#define BRIDGE_SEM 0
-#define VISITOR_COUNT_SEM 1
-#define GUIDE_BRIDGE_WAIT_SEM 2
+#define SEM_COUNT 5
+#define BRIDGE_SEM_1 0
+#define BRIDGE_SEM_2 1
+#define VISITOR_COUNT_SEM 2
+#define GUIDE_BRIDGE_SEM_1 3
+#define GUIDE_BRIDGE_SEM_2 4
 
 #define EINTR 4
 

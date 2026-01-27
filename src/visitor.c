@@ -36,8 +36,11 @@ int main(int argc, char* argv[]) {
     key = generateKey(VISITOR_CASHIER_QUEUE_KEY_ID);
     int visitorCashierMsgQueueId = getMsgQueueId(key, 0);
 
-    key = generateKey(VISITOR_GUIDE_QUEUE_KEY_ID);
-    int visitorGuideMsgQueueId = getMsgQueueId(key, 0);
+    key = generateKey(VISITOR_GUIDE_QUEUE_KEY_ID_1);
+    int visitorGuideMsgQueueId1 = getMsgQueueId(key, 0);
+
+    key = generateKey(VISITOR_GUIDE_QUEUE_KEY_ID_2);
+    int visitorGuideMsgQueueId2 = getMsgQueueId(key, 0);
 
     key = generateKey(SEMAPHORE_KEY_ID);
     int semId = getSemaphoreId(key, SEM_COUNT, 0);
@@ -68,6 +71,10 @@ int main(int argc, char* argv[]) {
         else if (age >= 8 && !isRepeat) queueMessage.mtype = PRIORITY_NORMAL_ADULT;
         else queueMessage.mtype = PRIORITY_NORMAL_CHILD;
         queueMessage.pid = pid;
+
+        int visitorGuideMsgQueueId;
+        if (routeToVisit == 1) visitorGuideMsgQueueId = visitorGuideMsgQueueId1;
+        else visitorGuideMsgQueueId = visitorGuideMsgQueueId2;
         if (msgsnd(visitorGuideMsgQueueId, &queueMessage,
             sizeof(QueueMessage) - sizeof(long), 0) == -1) {
             PRINT_ERR("msgsnd");
@@ -83,13 +90,25 @@ int main(int argc, char* argv[]) {
         }
         canProceed = 0;
 
+        // uses different semaphores based on the route chosen
+        int bridgeSemaphore;
+        int guideBridgeSemaphore;
+        if (routeToVisit == 1) {
+            bridgeSemaphore = BRIDGE_SEM_1;
+            guideBridgeSemaphore = GUIDE_BRIDGE_SEM_1;
+        }
+        else {
+            bridgeSemaphore = BRIDGE_SEM_2;
+            guideBridgeSemaphore = GUIDE_BRIDGE_SEM_2;
+        }
+
         // bridge waiting semaphore
-        P(semId, BRIDGE_SEM);
+        P(semId, bridgeSemaphore);
         sleep(BRIDGE_DURATION);
-        V(semId, BRIDGE_SEM);
+        V(semId, bridgeSemaphore);
 
         //signal the guide that crossed the bridge
-        V(semId, GUIDE_BRIDGE_WAIT_SEM);
+        V(semId, guideBridgeSemaphore);
 
         //wait for guide signal that the tour has ended
         while (!canProceed) {
@@ -97,12 +116,12 @@ int main(int argc, char* argv[]) {
         }
 
         // bridge waiting semaphore to leave the cave
-        P(semId, BRIDGE_SEM);
+        P(semId, bridgeSemaphore);
         sleep(BRIDGE_DURATION);
-        V(semId, BRIDGE_SEM);
+        V(semId, bridgeSemaphore);
 
         // inform guide that you have crossed back
-        V(semId, GUIDE_BRIDGE_WAIT_SEM);
+        V(semId, guideBridgeSemaphore);
 
 
         if (!isRepeat && rand() % 10 == 0) {

@@ -1,10 +1,13 @@
 #include <signal.h>
 #include <stdio.h>
+#include <string.h>
 #include "utils.h"
 #include "logger.h"
 #include <unistd.h>
 #include <sys/msg.h>
 #include "config.h"
+
+// #define PROCESS_NAME "[Guide %s]", argv[1]
 
 volatile sig_atomic_t stop = 0;
 void handleSignal(int sig) {
@@ -12,9 +15,26 @@ void handleSignal(int sig) {
 }
 
 int main(int argc, char* argv[]) {
+    int routeCapacity;
+    int visitorGuideQueueKeyId;
+    int guideBridgeSem;
+    int routeDuration;
+    if (strcmp(argv[1], "1") == 0) { // guide 1
+        routeCapacity = ROUTE_1_CAPACITY;
+        visitorGuideQueueKeyId = VISITOR_GUIDE_QUEUE_KEY_ID_1;
+        guideBridgeSem = GUIDE_BRIDGE_SEM_1;
+        routeDuration = ROUTE_1_DURATION;
+    }
+    else {
+        routeCapacity = ROUTE_2_CAPACITY;
+        visitorGuideQueueKeyId = VISITOR_GUIDE_QUEUE_KEY_ID_2;
+        guideBridgeSem = GUIDE_BRIDGE_SEM_2;
+        routeDuration = ROUTE_2_DURATION;
+    }
+
     PRINT("I'm the guide!");
 
-    int visitors[ROUTE_1_CAPACITY];
+    int visitors[routeCapacity];
 
     struct sigaction signalHandler = {0};
     signalHandler.sa_handler = handleSignal;
@@ -24,7 +44,7 @@ int main(int argc, char* argv[]) {
     int shmid = getShmid(key, 0);
     sharedState* state = attachSharedMemory(shmid);
 
-    key = generateKey(VISITOR_GUIDE_QUEUE_KEY_ID);
+    key = generateKey(visitorGuideQueueKeyId);
     int visitorGuideMsgQueueId = getMsgQueueId(key, 0);
     QueueMessage msg;
 
@@ -61,7 +81,7 @@ int main(int argc, char* argv[]) {
         }
 
         // second loop to process the remaining people based on priority
-        while ( count < ROUTE_1_CAPACITY &&
+        while ( count < routeCapacity &&
             msgrcv(visitorGuideMsgQueueId, &msg,
                 sizeof(QueueMessage) - sizeof(long),
                 -PRIORITY_NORMAL_ADULT, IPC_NOWAIT) != -1) {
@@ -82,13 +102,13 @@ int main(int argc, char* argv[]) {
 
             // wait for all visitors in current group to cross the bridge
             for (int i = 0; i < count; i++) {
-                P(semId, GUIDE_BRIDGE_WAIT_SEM);
+                P(semId, guideBridgeSem);
             }
             PRINT("%d visitors crossed the bridge to enter", count);
 
             if (!stop) {
                 PRINT("Tour is in progress");
-                sleep(ROUTE_1_DURATION);
+                sleep(routeDuration);
                 PRINT("Tour finished");
             }
             for (int i = 0; i < count; i++) {
@@ -97,7 +117,7 @@ int main(int argc, char* argv[]) {
 
             // wait for all visitors to exit and cross the bridge
             for (int i = 0; i < count; i++) {
-                P(semId, GUIDE_BRIDGE_WAIT_SEM);
+                P(semId, guideBridgeSem);
             }
             PRINT("%d visitors left the cave", count);
         }
