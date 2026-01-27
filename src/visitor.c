@@ -40,8 +40,14 @@ int main(int argc, char* argv[]) {
 
     struct sigaction signalHandler = {0};
     signalHandler.sa_handler = handleSignal;
-    sigaction(SIGUSR1, &signalHandler, NULL);
-    sigaction(SIGTERM, &signalHandler, NULL);
+    if (sigaction(SIGUSR1, &signalHandler, NULL) == -1) {
+        perror("sigaction SIGUSR1");
+        return EXIT_FAILURE;
+    }
+    if (sigaction(SIGTERM, &signalHandler, NULL) == -1) {
+        perror("sigaction SIGTERM");
+        return EXIT_FAILURE;
+    }
 
     int shmid = openSharedMemory(SHM_KEY_ID);
     sharedState* state = attachSharedMemory(shmid);
@@ -129,8 +135,8 @@ void buyTicket(int queueId, int age, int isRepeat) {
     msg.age = age;
     msg.isRepeat = isRepeat;
     if (msgsnd(queueId, &msg, sizeof(TicketMessage) - sizeof(long), 0) == -1) {
-        LOG_ERR("msgsnd ticket");
-        exit(1);
+        perror("msgsnd ticket");
+        exit(EXIT_FAILURE);
     }
 }
 
@@ -139,8 +145,8 @@ void joinQueue(int queueId, pid_t pid, long priority) {
     msg.mtype = priority;
     msg.pid = pid;
     if (msgsnd(queueId, &msg, sizeof(QueueMessage) - sizeof(long), 0) == -1) {
-        LOG_ERR("msgsnd queue");
-        exit(1);
+        perror("msgsnd queue");
+        exit(EXIT_FAILURE);
     }
 }
 

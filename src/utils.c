@@ -2,7 +2,6 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/ipc.h>
-#include "logger.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/msg.h>
@@ -12,8 +11,8 @@
 key_t generateKey(int id) {
     key_t key = ftok(".", id);
     if (key == -1) {
-        LOG_ERR("ftok");
-        exit(1);
+        perror("ftok");
+        exit(EXIT_FAILURE);
     }
     return key;
 }
@@ -21,8 +20,8 @@ key_t generateKey(int id) {
 int getShmid(key_t shmKey, int flag) {
     int shmid = shmget(shmKey, sizeof(sharedState), flag);
     if (shmid == -1) {
-        LOG_ERR("shmget");
-        exit(1);
+        perror("shmget");
+        exit(EXIT_FAILURE);
     }
     return shmid;
 }
@@ -40,31 +39,29 @@ int openSharedMemory(int keyId) {
 sharedState* attachSharedMemory(int shmid) {
     sharedState* state = shmat(shmid, NULL, 0);
     if (state == (sharedState*)-1) {
-        LOG_ERR("shmat");
-        exit(1);
+        perror("shmat");
+        exit(EXIT_FAILURE);
     }
     return state;
 }
 
 void deattachSharedMemory(sharedState* state) {
     if (shmdt(state) == -1) {
-        LOG_ERR("shmdt");
-        exit(1);
+        perror("shmdt");
     }
 }
 
 void destroySharedMemory(int shmid) {
     if (shmctl(shmid, IPC_RMID, NULL) == -1) {
-        LOG_ERR("shmctl");
-        exit(1);
+        perror("shmctl IPC_RMID");
     }
 }
 
 int getMsgQueueId(key_t msgKey, int flag) {
     int msgQueueId = msgget(msgKey, flag);
     if (msgQueueId == -1) {
-        LOG_ERR("msgget");
-        exit(1);
+        perror("msgget");
+        exit(EXIT_FAILURE);
     }
     return msgQueueId;
 }
@@ -81,16 +78,15 @@ int openMsgQueue(int keyId) {
 
 void destroyMsgQueue(int msgQueueId) {
     if (msgctl(msgQueueId, IPC_RMID, NULL) == -1) {
-        LOG_ERR("msgctl");
-        exit(1);
+        perror("msgctl IPC_RMID");
     }
 }
 
 int getSemaphoreId(key_t semKey, int count, int flag) {
     int semId = semget(semKey, count, flag);
     if (semId == -1) {
-        LOG_ERR("semget");
-        exit(1);
+        perror("semget");
+        exit(EXIT_FAILURE);
     }
     return semId;
 }
@@ -107,15 +103,14 @@ int openSemaphore(int keyId, int count) {
 
 void initializeSemaphore(int semId, int semNum ,int initialValue) {
     if (semctl(semId, semNum, SETVAL, initialValue) == -1) {
-        LOG_ERR("semctl");
-        exit(1);
+        perror("semctl SETVAL");
+        exit(EXIT_FAILURE);
     }
 }
 
 void destroySemaphore(int semId) {
     if (semctl(semId, 0, IPC_RMID) == -1) {
-        LOG_ERR("semctl");
-        exit(1);
+        perror("semctl IPC_RMID");
     }
 }
 
@@ -123,7 +118,7 @@ void P(int semId, int semnum) {
     struct sembuf op = {semnum, -1, 0};
     if (semop(semId, &op, 1) == -1) {
         if (errno != EINTR) {
-            LOG_ERR("semop P");
+            perror("semop P");
             exit(EXIT_FAILURE);
         }
     }
@@ -133,7 +128,7 @@ void V(int semId, int semnum) {
     struct sembuf op = {semnum, +1, 0};
     if (semop(semId, &op, 1) == -1) {
         if (errno != EINTR) {
-            LOG_ERR("semop P");
+            perror("semop V");
             exit(EXIT_FAILURE);
         }
     }

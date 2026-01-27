@@ -2,6 +2,7 @@
 #include <sys/msg.h>
 #include <errno.h>
 #include <signal.h>
+#include <stdlib.h>
 #include "logger.h"
 #include "config.h"
 #include "utils.h"
@@ -20,7 +21,10 @@ int main(int argc, char* argv[]) {
 
     struct sigaction signalHandler = {0};
     signalHandler.sa_handler = handleSignal;
-    sigaction(SIGTERM, &signalHandler, NULL);
+    if (sigaction(SIGTERM, &signalHandler, NULL) == -1) {
+        perror("sigaction SIGTERM");
+        return EXIT_FAILURE;
+    }
 
     int shmid = openSharedMemory(SHM_KEY_ID);
     sharedState* state = attachSharedMemory(shmid);
@@ -37,7 +41,7 @@ int main(int argc, char* argv[]) {
         if (msgrcv(visitorCashierMsgQueueId, &msg, sizeof(TicketMessage) - sizeof(long),
             0, 0) == -1) {
             if (errno == EINTR) continue;
-            LOG_ERR("msgrcv");
+            perror("msgrcv");
             continue;
         }
         processTicket(state, &msg);

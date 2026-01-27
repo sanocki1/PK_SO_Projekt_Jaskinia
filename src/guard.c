@@ -9,6 +9,10 @@
 void terminateProcesses(pid_t cashierPid, pid_t guide1Pid, pid_t guide2Pid);
 
 int main(int argc, char* argv[]) {
+    if (argc < 4) {
+        perror("Not enough arguments");
+        exit(EXIT_FAILURE);
+    }
     int shmid = openSharedMemory(SHM_KEY_ID);
     sharedState* state = attachSharedMemory(shmid);
 
@@ -36,7 +40,13 @@ int main(int argc, char* argv[]) {
 }
 
 void terminateProcesses(pid_t cashierPid, pid_t guide1Pid, pid_t guide2Pid) {
-    kill(cashierPid, SIGTERM);
-    kill(guide1Pid, SIGTERM);
-    kill(guide2Pid, SIGTERM);
+    if (kill(cashierPid, SIGTERM) == -1) {
+        perror("kill cashier");
+    }
+    if (kill(guide1Pid, SIGTERM) == -1) {
+        perror("kill guide1");
+    }
+    if (kill(guide2Pid, SIGTERM) == -1) {
+        perror("kill guide2");
+    }
 }

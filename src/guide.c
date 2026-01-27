@@ -1,11 +1,13 @@
 #include <signal.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "utils.h"
 #include "logger.h"
 #include <unistd.h>
 #include <sys/msg.h>
 #include "config.h"
+
 
 volatile sig_atomic_t stop = 0;
 void handleSignal(int sig) {
@@ -43,7 +45,10 @@ int main(int argc, char* argv[]) {
 
     struct sigaction signalHandler = {0};
     signalHandler.sa_handler = handleSignal;
-    sigaction(SIGTERM, &signalHandler, NULL);
+    if (sigaction(SIGTERM, &signalHandler, NULL) == -1) {
+        perror("sigaction SIGTERM");
+        return EXIT_FAILURE;
+    }
 
     int shmid = openSharedMemory(SHM_KEY_ID);
     sharedState* state = attachSharedMemory(shmid);
@@ -133,7 +138,9 @@ void waitForBridgeCrossing(int semId, int bridgeSem, int count) {
 }
 
 void signalVisitor(pid_t visitorPid, int signal) {
-    kill(visitorPid, signal);
+    if (kill(visitorPid, signal) == -1) {
+        perror("kill visitor");
+    }
 }
 
 void signalVisitors(pid_t* visitors, int count, int signal) {
