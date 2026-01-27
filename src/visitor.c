@@ -109,6 +109,7 @@ int main(int argc, char* argv[]) {
         LOG("Crossed the bridge.");
 
         //wait for guide signal that the tour has ended
+        LOG("Starting the tour.");
         waitForSignal();
         LOG("Tour ended.");
 
@@ -153,7 +154,7 @@ void buyTicket(int queueId, int age, int isRepeat) {
     msg.mtype = 1;
     msg.age = age;
     msg.isRepeat = isRepeat;
-    if (msgsnd(queueId, &msg, sizeof(TicketMessage) - sizeof(long), 0) == -1) {
+    if (msgsnd(queueId, &msg, TICKET_MESSAGE_SIZE, 0) == -1) {
         perror("msgsnd ticket");
         exit(EXIT_FAILURE);
     }
@@ -163,7 +164,7 @@ void joinQueue(int queueId, pid_t pid, long priority) {
     QueueMessage msg;
     msg.mtype = priority;
     msg.pid = pid;
-    if (msgsnd(queueId, &msg, sizeof(QueueMessage) - sizeof(long), 0) == -1) {
+    if (msgsnd(queueId, &msg, QUEUE_MESSAGE_SIZE, 0) == -1) {
         perror("msgsnd queue");
         exit(EXIT_FAILURE);
     }

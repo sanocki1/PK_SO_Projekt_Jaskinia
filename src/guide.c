@@ -75,7 +75,7 @@ int main(int argc, char* argv[]) {
 
     // wait for some initial visitors to arrive so more than just the first group is processed
     sleep(VISITOR_FREQUENCY + 1);
-
+    sleep(60); //TODO THIS IS A TEMPORARY SLEEP FOR TESTING
     while (state->visitorCount || !stop) {
         int count = 0;
         int foundAdult = 0;

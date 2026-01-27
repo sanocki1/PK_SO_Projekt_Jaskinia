@@ -26,6 +26,8 @@
 
 #define EINTR 4
 #define MAIN_PROCESSES_COUNT 5 // main, cashier, guard, 2 guides
+#define TICKET_MESSAGE_SIZE sizeof(int) * 2
+#define QUEUE_MESSAGE_SIZE sizeof(int)
 
 /** @brief Pamięc wspóldzielona */
 typedef struct {

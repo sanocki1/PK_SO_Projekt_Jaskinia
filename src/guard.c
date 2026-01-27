@@ -38,7 +38,12 @@ int main(int argc, char* argv[]) {
 
     LOG("Touring is open!");
     LOG("Touring will close in %d seconds", secondsOpen);
-    sleep(secondsOpen);
+
+    // tracking elapsed time in short intervals so the guard does not "keep counting time" when simulation is paused
+    for (int elapsed = 0; elapsed < secondsOpen; elapsed++) {
+        sleep(1);
+    };
+
     state->closing = 1;
     LOG("Touring is closing!");
 

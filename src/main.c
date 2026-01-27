@@ -41,6 +41,8 @@ void spawnVisitorGroup(int groupSize);
 /** @brief Czyści dane z IPC */
 void cleanupResources();
 
+void handleSignal(int sig);
+
 static int visitorCashierMsgQueueId;
 static int visitorGuideMsgQueueId1;
 static int visitorGuideMsgQueueId2;
@@ -74,6 +76,17 @@ int main(int argc, char* argv[]) {
     initializeSemaphores(semId);
     initializeSharedState(state);
 
+    struct sigaction signalHandler = {0};
+    signalHandler.sa_handler = handleSignal;
+    if (sigaction(SIGINT, &signalHandler, NULL) == -1) {
+        perror("sigaction INT");
+        return EXIT_FAILURE;
+    }
+    if (sigaction(SIGTERM, &signalHandler, NULL) == -1) {
+        perror("sigaction SIGTERM");
+        return EXIT_FAILURE;
+    }
+
     initLogger(semId);
     LOG("I'm the main process!");
     LOG("Startup parameters have been initialized.");
@@ -97,13 +110,17 @@ int main(int argc, char* argv[]) {
 
     LOG("Simulation started. Visitors are arriving...");
 
-    while (!state->closing) {
-        int groupCount = rand() % MAX_VISITOR_GROUP_SIZE + 1;
+    int licznik = 5000;
+    while (licznik--) {
+        // while (!state->closing) {
+        // int groupCount = rand() % MAX_VISITOR_GROUP_SIZE + 1;
+        int groupCount = 1;
         if (state->visitorCount + groupCount <= maxVisitorCount) {
             LOG("Visitor group of size %d arrived", groupCount);
             spawnVisitorGroup(groupCount);
         }
-        sleep(VISITOR_FREQUENCY);
+        // sleep(VISITOR_FREQUENCY);
+        // }
     }
 
     while (wait(NULL) > 0) {}
@@ -204,4 +221,11 @@ void cleanupResources() {
     deattachSharedMemory(state);
     destroySharedMemory(shmid);
     destroySemaphore(semId);
+}
+
+void handleSignal(int sig) {
+    if (sig == SIGINT || sig == SIGTERM) {;
+        cleanupResources();
+        exit(EXIT_FAILURE);
+    }
 }
