@@ -22,7 +22,6 @@ int main(int argc, char* argv[]) {
     int wantsToVisit = 1;
     int isRepeat = 0;
     int routeToVisit = 0;
-    canProceed = 0;
 
     struct sigaction signalHandler = {0};
     signalHandler.sa_handler = handleSignal;
@@ -53,6 +52,7 @@ int main(int argc, char* argv[]) {
         if (age < 8 || age > 75) routeToVisit = 2;
         else if (isRepeat) routeToVisit = routeToVisit == 1 ? 2 : 1;
         else routeToVisit = rand() % 2 + 1;
+        canProceed = 0;
 
         TicketMessage ticketMessage;
         ticketMessage.mtype = 1;

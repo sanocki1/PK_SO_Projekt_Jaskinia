@@ -6,6 +6,7 @@
 #include <sys/wait.h>
 #include <time.h>
 #include <sys/types.h>
+#include <sys/resource.h>
 #include "config.h"
 #include "logger.h"
 #include "utils.h"
@@ -13,12 +14,31 @@
 int main(int argc, char* argv[]) {
     PRINT("I'm the main process!");
 
-    srand(time(NULL) + getpid());
-
-    if (argc != 3) {
-        PRINT_ERR("Wrong number of arguments in the main process");
+    if (OPENING_TIME < 0 || CLOSING_TIME > 24 || OPENING_TIME >= CLOSING_TIME || SECONDS_PER_HOUR < 1) {
+        PRINT_ERR("Invalid time parameters");
         return 1;
     }
+    if (ROUTE_1_CAPACITY < BRIDGE_CAPACITY || ROUTE_2_CAPACITY < BRIDGE_CAPACITY) {
+        PRINT_ERR("Invalid capacity parameters");
+        return 1;
+    }
+    if (ROUTE_1_DURATION < 0 || ROUTE_2_DURATION < 0 || BRIDGE_DURATION < 0) {
+        PRINT_ERR("Invalid duration parameters");
+        return 1;
+    }
+
+    struct rlimit limit;
+    if (getrlimit(RLIMIT_NPROC, &limit) == -1) {
+        PRINT_ERR("getrlimit");
+        return 1;
+    }
+    if (limit.rlim_cur < (MAIN_PROCESSES_COUNT + MAX_VISITOR_GROUP_SIZE)) {
+        PRINT_ERR("Not enough process limit to run the simulation\n");
+        return 1;
+    }
+    ulong maxVisitorCount = (limit.rlim_cur - MAIN_PROCESSES_COUNT);
+
+    srand(time(NULL) + getpid());
 
     key_t key = generateKey(SHM_KEY_ID);
     int shmid = getShmid(key, IPC_CREAT | 0600);
@@ -41,8 +61,8 @@ int main(int argc, char* argv[]) {
     initializeSemaphore(semId,GUIDE_BRIDGE_SEM_1, 0);
     initializeSemaphore(semId,GUIDE_BRIDGE_SEM_2, 0);
 
-    state->Tp = atoi(argv[1]);
-    state->Tk = atoi(argv[2]);
+    state->Tp = OPENING_TIME;
+    state->Tk = CLOSING_TIME;
     state->closing = 0;
     state->moneyEarned = 0;
     state->ticketsSold = 0;
@@ -91,6 +111,7 @@ int main(int argc, char* argv[]) {
 
     while (!state->closing) {
         int groupCount = rand() % MAX_VISITOR_GROUP_SIZE + 1;
+        if (state->visitorCount + groupCount > maxVisitorCount) continue;
         for (int i = 0; i < groupCount; i++) {
             pid_t visitorPid = fork();
             if (visitorPid == -1) {

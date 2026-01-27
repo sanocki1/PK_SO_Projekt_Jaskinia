@@ -9,7 +9,6 @@
 #define VISITOR_GUIDE_QUEUE_KEY_ID_1 4
 #define VISITOR_GUIDE_QUEUE_KEY_ID_2 5
 
-
 // children before adults, so after 1 adult is found queue fills up with
 // as many children as possible so even less chance of cloging the queue
 #define PRIORITY_HIGH_CHILD 1
@@ -25,6 +24,7 @@
 #define GUIDE_BRIDGE_SEM_2 4
 
 #define EINTR 4
+#define MAIN_PROCESSES_COUNT 5 // main, cashier, guard, 2 guides
 
 typedef struct {
     int Tp; // opening time

@@ -7,8 +7,6 @@
 #include <sys/msg.h>
 #include "config.h"
 
-// #define PROCESS_NAME "[Guide %s]", argv[1]
-
 volatile sig_atomic_t stop = 0;
 void handleSignal(int sig) {
     if (sig == SIGTERM) stop = 1;
@@ -19,13 +17,13 @@ int main(int argc, char* argv[]) {
     int visitorGuideQueueKeyId;
     int guideBridgeSem;
     int routeDuration;
-    if (strcmp(argv[1], "1") == 0) { // guide 1
+    if (strcmp(argv[1], "1") == 0) {    // guide 1
         routeCapacity = ROUTE_1_CAPACITY;
         visitorGuideQueueKeyId = VISITOR_GUIDE_QUEUE_KEY_ID_1;
         guideBridgeSem = GUIDE_BRIDGE_SEM_1;
         routeDuration = ROUTE_1_DURATION;
     }
-    else {
+    else {                              //guide 2
         routeCapacity = ROUTE_2_CAPACITY;
         visitorGuideQueueKeyId = VISITOR_GUIDE_QUEUE_KEY_ID_2;
         guideBridgeSem = GUIDE_BRIDGE_SEM_2;

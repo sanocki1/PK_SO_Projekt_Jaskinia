@@ -15,10 +15,6 @@ int main(int argc, char* argv[]) {
 
     int Tp = state->Tp;
     int Tk = state->Tk;
-    if (Tp < 0 || Tk > 24 || Tp >= Tk || SECONDS_PER_HOUR < 1) {
-        printf("Invalid time parameters\n");
-        return 1;
-    }
     int secondsOpen = (Tk - Tp) * SECONDS_PER_HOUR;
 
     pid_t cashierPid = atoi(argv[1]);
