@@ -48,7 +48,7 @@ int main(int argc, char* argv[]) {
 
     while (!stop) {
         TicketMessage msg;
-        if (msgrcv(visitorCashierMsgQueueId, &msg, sizeof(TicketMessage) - sizeof(long),
+        if (msgrcv(visitorCashierMsgQueueId, &msg, TICKET_MESSAGE_SIZE,
             0, 0) == -1) {
             if (errno == EINTR) continue;
             perror("msgrcv");
@@ -56,9 +56,13 @@ int main(int argc, char* argv[]) {
         }
         processTicket(state, &msg);
     }
+    LOG("Tickets sold for the day: %d", state->ticketsSold);
+    LOG("Total money earned: %.2f", state->moneyEarned);
 
     deattachSharedMemory(state);
+
     LOG("Finishing...");
+    return 0;
 }
 
 double calculateTicketPrice(int age, int isRepeat) {

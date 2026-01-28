@@ -125,8 +125,6 @@ int main(int argc, char* argv[]) {
 
     while (wait(NULL) > 0) {}
 
-    LOG("Tickets sold for the day: %d", state->ticketsSold);
-    LOG("Total money earned: %.2f", state->moneyEarned);
     LOG("Closing the simulation.");
 
     cleanupResources();

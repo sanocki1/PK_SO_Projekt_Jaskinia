@@ -80,6 +80,7 @@ int main(int argc, char* argv[]) {
         int count = 0;
         int foundAdult = 0;
         QueueMessage msg;
+        LOG("Waiting for visitors in thq queue.");
 
         // first loop to find at least one adult of any priority
         while (!foundAdult && !stop) {
@@ -132,12 +133,13 @@ int main(int argc, char* argv[]) {
     }
 
     deattachSharedMemory(state);
+
     LOG("Finishing...");
     return 0;
 }
 
 int receiveMessage(int queueId, QueueMessage* msg, long msgType) {
-    return msgrcv(queueId, msg, sizeof(QueueMessage) - sizeof(long),
+    return msgrcv(queueId, msg, QUEUE_MESSAGE_SIZE,
                   msgType, IPC_NOWAIT) != -1;
 }
 

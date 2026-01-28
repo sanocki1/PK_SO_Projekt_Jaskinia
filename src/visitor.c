@@ -23,10 +23,9 @@
 
 volatile sig_atomic_t canProceed;
 volatile sig_atomic_t rejected = 0;
-void handleSignal(int sig) {
-    if (sig == SIGUSR1) canProceed = 1;
-    if (sig == SIGTERM) rejected = 1;
-}
+
+/** @brief Obsługuje sygnały do kontynowania/przerywania wycieczki wysyłane przez prowadzącego */
+void handleSignal(int sig);
 
 /** @brief Wybiera trasę do zwiedzania na podstawie wieku i historii wizyt. */
 int selectRoute(int age, int isRepeat, int previousRoute);
@@ -86,9 +85,6 @@ int main(int argc, char* argv[]) {
         routeToVisit = selectRoute(age, isRepeat, routeToVisit);
         canProceed = 0;
 
-        LOG("Buying a ticket for route %d.", routeToVisit);
-        buyTicket(visitorCashierMsgQueueId, age, isRepeat);
-
         long priority = getQueuePriority(age, isRepeat);
         int queueId = routeToVisit == 1 ? visitorGuideMsgQueueId1 : visitorGuideMsgQueueId2;
         LOG("Joining queue %d with priority %ld.", routeToVisit, priority);
@@ -98,6 +94,9 @@ int main(int argc, char* argv[]) {
         waitForSignal();
         if (rejected) break;
         canProceed = 0;
+
+        LOG("Buying a ticket for route %d.", routeToVisit);
+        buyTicket(visitorCashierMsgQueueId, age, isRepeat);
 
         int bridgeSemaphore = routeToVisit == 1 ? BRIDGE_SEM_1 : BRIDGE_SEM_2;
         int guideBridgeSemaphore = routeToVisit == 1 ? GUIDE_BRIDGE_SEM_1 : GUIDE_BRIDGE_SEM_2;
@@ -130,10 +129,15 @@ int main(int argc, char* argv[]) {
     }
 
     updateVisitorCount(state, semId, -1);
-    LOG("Leaving...");
-
     deattachSharedMemory(state);
+
+    LOG("Leaving...");
     return 0;
+}
+
+void handleSignal(int sig) {
+    if (sig == SIGUSR1) canProceed = 1;
+    if (sig == SIGTERM) rejected = 1;
 }
 
 int selectRoute(int age, int isRepeat, int previousRoute) {
