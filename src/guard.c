@@ -55,13 +55,7 @@ int main(int argc, char* argv[]) {
 }
 
 void terminateProcesses(pid_t cashierPid, pid_t guide1Pid, pid_t guide2Pid) {
-    if (kill(cashierPid, SIGTERM) == -1) {
-        perror("kill cashier");
-    }
-    if (kill(guide1Pid, SIGTERM) == -1) {
-        perror("kill guide1");
-    }
-    if (kill(guide2Pid, SIGTERM) == -1) {
-        perror("kill guide2");
-    }
+    if (kill(cashierPid, SIGTERM) == -1) { perror("kill cashier"); }
+    if (kill(guide1Pid, SIGTERM) == -1) { perror("kill guide1"); }
+    if (kill(guide2Pid, SIGTERM) == -1) { perror("kill guide2"); }
 }

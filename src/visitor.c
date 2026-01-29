@@ -34,10 +34,10 @@ int selectRoute(int age, int isRepeat, int previousRoute);
 long getQueuePriority(int age, int isRepeat);
 
 /** @brief Wysyła wiadomość do kasjera z danymi potrzebnymi do wyceny. */
-void buyTicket(int queueId, int age, int isRepeat);
+void buyTicket(int queueId, int age, int isRepeat, int semId);
 
 /** @brief Dołącza do kolejki do jaskini. */
-void joinQueue(int queueId, pid_t pid, long priority);
+void joinQueue(int queueId, pid_t pid, long priority, int semId, int queueSem);
 
 /** @brief Czeka na sygnał od prowadzącego. */
 void waitForSignal(void);
@@ -87,16 +87,17 @@ int main(int argc, char* argv[]) {
 
         long priority = getQueuePriority(age, isRepeat);
         int queueId = routeToVisit == 1 ? visitorGuideMsgQueueId1 : visitorGuideMsgQueueId2;
+        int queueSem = routeToVisit == 1 ? QUEUE_SEM_1 : QUEUE_SEM_2;
         LOG("Joining queue %d with priority %ld.", routeToVisit, priority);
-        joinQueue(queueId, pid, priority);
+        joinQueue(queueId, pid, priority, semId, queueSem);
 
-        // wait for guide signal to enter the bridge/cave
+        // wait for a guide signal to enter the bridge/cave
         waitForSignal();
         if (rejected) break;
         canProceed = 0;
 
         LOG("Buying a ticket for route %d.", routeToVisit);
-        buyTicket(visitorCashierMsgQueueId, age, isRepeat);
+        buyTicket(visitorCashierMsgQueueId, age, isRepeat, semId);
 
         int bridgeSemaphore = routeToVisit == 1 ? BRIDGE_SEM_1 : BRIDGE_SEM_2;
         int guideBridgeSemaphore = routeToVisit == 1 ? GUIDE_BRIDGE_SEM_1 : GUIDE_BRIDGE_SEM_2;
@@ -113,13 +114,13 @@ int main(int argc, char* argv[]) {
         LOG("Tour ended.");
 
         LOG("Waiting to cross the bridge back.");
-        // wait for bridge capacity to leave, then signal guide
+        // wait for bridge capacity to leave, then signal the guide
         crossBridge(semId, bridgeSemaphore);
         V(semId, guideBridgeSemaphore);
         LOG("Crossed the bridge back.");
 
 
-        if (!isRepeat && rand() % 10 == 0) {
+        if (!state->closing && !isRepeat && rand() % 10 == 0) {
             isRepeat = 1;
             LOG("Decided to visit again.");
         } else {
@@ -153,25 +154,29 @@ long getQueuePriority(int age, int isRepeat) {
     return PRIORITY_NORMAL_CHILD;
 }
 
-void buyTicket(int queueId, int age, int isRepeat) {
+void buyTicket(int queueId, int age, int isRepeat, int semId) {
     TicketMessage msg;
     msg.mtype = 1;
     msg.age = age;
     msg.isRepeat = isRepeat;
+    P(semId, TICKET_QUEUE_SEM);
     if (msgsnd(queueId, &msg, TICKET_MESSAGE_SIZE, 0) == -1) {
         perror("msgsnd ticket");
         exit(EXIT_FAILURE);
     }
+    // V(semId, TICKET_QUEUE_SEM);
 }
 
-void joinQueue(int queueId, pid_t pid, long priority) {
+void joinQueue(int queueId, pid_t pid, long priority, int semId, int queueSem) {
     QueueMessage msg;
     msg.mtype = priority;
     msg.pid = pid;
+    P(semId, queueSem);
     if (msgsnd(queueId, &msg, QUEUE_MESSAGE_SIZE, 0) == -1) {
         perror("msgsnd queue");
         exit(EXIT_FAILURE);
     }
+    // V(semId, queueSem);
 }
 
 void waitForSignal(void) {

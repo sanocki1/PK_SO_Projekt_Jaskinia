@@ -12,6 +12,7 @@
 #include <errno.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include "logger.h"
 #include "config.h"
 #include "utils.h"
@@ -20,6 +21,7 @@ volatile sig_atomic_t stop = 0;
 void handleSignal(int sig) {
     if (sig == SIGTERM) stop = 1;
 }
+
 /** @brief Oblicza cenę biletu dla odwiedzającego. */
 double calculateTicketPrice(int age, int isRepeat);
 
@@ -54,6 +56,7 @@ int main(int argc, char* argv[]) {
             perror("msgrcv");
             continue;
         }
+        V(semId, TICKET_QUEUE_SEM);
         processTicket(state, &msg);
     }
     LOG("Tickets sold for the day: %d", state->ticketsSold);
@@ -75,5 +78,5 @@ void processTicket(sharedState* state, const TicketMessage* msg) {
     double price = calculateTicketPrice(msg->age, msg->isRepeat);
     state->ticketsSold++;
     state->moneyEarned += price;
-    LOG("Ticket sold for %.2f", price);
+    LOG("Ticket sold for %.2f.", price);
 }

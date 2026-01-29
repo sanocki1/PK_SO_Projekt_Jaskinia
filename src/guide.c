@@ -24,6 +24,7 @@ volatile sig_atomic_t stop = 0;
 void handleSignal(int sig) {
     if (sig == SIGTERM) stop = 1;
 }
+
 /** @brief Odbiera komunikat z kolejki. */
 int receiveMessage(int queueId, QueueMessage* msg, long msgType);
 
@@ -44,17 +45,20 @@ int main(int argc, char* argv[]) {
     int visitorGuideQueueKeyId;
     int guideBridgeSem;
     int routeDuration;
+    int queueSem;
     if (strcmp(argv[1], "1") == 0) {    // guide 1
         routeCapacity = ROUTE_1_CAPACITY;
         visitorGuideQueueKeyId = VISITOR_GUIDE_QUEUE_KEY_ID_1;
         guideBridgeSem = GUIDE_BRIDGE_SEM_1;
         routeDuration = ROUTE_1_DURATION;
+        queueSem = QUEUE_SEM_1;
     }
     else {                              //guide 2
         routeCapacity = ROUTE_2_CAPACITY;
         visitorGuideQueueKeyId = VISITOR_GUIDE_QUEUE_KEY_ID_2;
         guideBridgeSem = GUIDE_BRIDGE_SEM_2;
         routeDuration = ROUTE_2_DURATION;
+        queueSem = QUEUE_SEM_2;
     }
     int visitors[routeCapacity];
 
@@ -75,16 +79,16 @@ int main(int argc, char* argv[]) {
 
     // wait for some initial visitors to arrive so more than just the first group is processed
     sleep(VISITOR_FREQUENCY + 1);
-    sleep(60); //TODO THIS IS A TEMPORARY SLEEP FOR TESTING
     while (state->visitorCount || !stop) {
         int count = 0;
         int foundAdult = 0;
         QueueMessage msg;
-        LOG("Waiting for visitors in thq queue.");
+        if (!stop) LOG("Waiting for visitors...");
 
         // first loop to find at least one adult of any priority
         while (!foundAdult && !stop) {
             if (findAdult(visitorGuideMsgQueueId, &msg)) {
+                V(semId, queueSem);
                 foundAdult = 1;
                 pid_t visitorPid = msg.pid;
                 if (stop) {
@@ -101,6 +105,7 @@ int main(int argc, char* argv[]) {
         // second loop to process the remaining people based on priority
         while ( count < routeCapacity &&
                 receiveMessage(visitorGuideMsgQueueId, &msg, -PRIORITY_NORMAL_ADULT)) {
+            V(semId, queueSem);
             pid_t visitorPid = msg.pid;
             // tour is closed, reject the visitor from the queue
             if (stop) {

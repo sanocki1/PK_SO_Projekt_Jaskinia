@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <time.h>
+#include <sys/msg.h>
 #include <sys/types.h>
 #include <sys/resource.h>
 #include "config.h"
@@ -41,6 +42,8 @@ void spawnVisitorGroup(int groupSize);
 /** @brief Czyści dane z IPC */
 void cleanupResources();
 
+size_t getMaxQueueMessageMemory();
+
 void handleSignal(int sig);
 
 static int visitorCashierMsgQueueId;
@@ -49,6 +52,7 @@ static int visitorGuideMsgQueueId2;
 static sharedState* state;
 static int shmid;
 static int semId;
+static size_t maxQueueMemory;
 
 
 int main(int argc, char* argv[]) {
@@ -72,6 +76,14 @@ int main(int argc, char* argv[]) {
     visitorGuideMsgQueueId1 = createMsgQueue(VISITOR_GUIDE_QUEUE_KEY_ID_1);
     visitorGuideMsgQueueId2 = createMsgQueue(VISITOR_GUIDE_QUEUE_KEY_ID_2);
 
+    // get maximum queue size for overflow protection
+    struct msqid_ds queueInfo;
+    if (msgctl(visitorCashierMsgQueueId, IPC_STAT, &queueInfo) == -1) {
+        perror("msgctl cashier queue");
+        return EXIT_FAILURE;
+    }
+    maxQueueMemory = queueInfo.msg_qbytes;
+
     semId = createSemaphore(SEMAPHORE_KEY_ID, SEM_COUNT);
     initializeSemaphores(semId);
     initializeSharedState(state);
@@ -90,6 +102,7 @@ int main(int argc, char* argv[]) {
     initLogger(semId);
     LOG("I'm the main process!");
     LOG("Startup parameters have been initialized.");
+    LOG("%d",maxQueueMemory/TICKET_MESSAGE_SIZE);
 
     char cashierPidStr[16], guide1PidStr[16], guide2PidStr[16];
     char* cashierArgs[] = {"cashier", NULL};
@@ -110,7 +123,7 @@ int main(int argc, char* argv[]) {
 
     LOG("Simulation started. Visitors are arriving...");
 
-    int licznik = 5000;
+    int licznik = 10000;
     while (licznik--) {
         // while (!state->closing) {
         // int groupCount = rand() % MAX_VISITOR_GROUP_SIZE + 1;
@@ -136,23 +149,23 @@ int main(int argc, char* argv[]) {
 int validateParameters() {
     if (OPENING_TIME < 0 || CLOSING_TIME > 24 || OPENING_TIME >= CLOSING_TIME || SECONDS_PER_HOUR < 1 ||
         SECONDS_PER_HOUR <= 0 || VISITOR_FREQUENCY <= 0) {
-        perror("Invalid time parameters");
+        printf("Invalid time parameters");
         return 0;
     }
     if (ROUTE_1_CAPACITY <= BRIDGE_CAPACITY || ROUTE_2_CAPACITY <= BRIDGE_CAPACITY || BRIDGE_CAPACITY <= 0) {
-        perror("Invalid capacity parameters");
+        printf("Invalid capacity parameters");
         return 0;
     }
     if (ROUTE_1_DURATION <= 0 || ROUTE_2_DURATION <= 0 || BRIDGE_DURATION <= 0) {
-        perror("Invalid duration parameters");
+        printf("Invalid duration parameters");
         return 0;
     }
     if (MAX_VISITOR_GROUP_SIZE <= 0) {
-        perror("Invalid visitor group size parameters");
+        printf("Invalid visitor group size parameters");
         return 0;
     }
     if (BASE_TICKET_PRICE <= 0) {
-        perror("Invalid ticket price parameters");
+        printf("Invalid ticket price parameters");
         return 0;
     }
     return 1;
@@ -187,6 +200,9 @@ void initializeSemaphores(int semId) {
     initializeSemaphore(semId, GUIDE_BRIDGE_SEM_1, 0);
     initializeSemaphore(semId, GUIDE_BRIDGE_SEM_2, 0);
     initializeSemaphore(semId, LOG_SEM, 1);
+    initializeSemaphore(semId, QUEUE_SEM_1, maxQueueMemory/QUEUE_MESSAGE_SIZE);
+    initializeSemaphore(semId, QUEUE_SEM_2, maxQueueMemory/QUEUE_MESSAGE_SIZE);
+    initializeSemaphore(semId, TICKET_QUEUE_SEM, maxQueueMemory/TICKET_MESSAGE_SIZE);
 }
 
 pid_t spawnProcess(const char* executable, char* const args[]) {
@@ -219,6 +235,15 @@ void cleanupResources() {
     deattachSharedMemory(state);
     destroySharedMemory(shmid);
     destroySemaphore(semId);
+}
+
+size_t getMaxQueueMessageMemory() {
+    struct rlimit limit;
+    if (getrlimit(RLIMIT_MSGQUEUE, &limit) == -1) {
+        perror("getrlimit RLIMIT_MSGQUEUE");
+        return 0;
+    }
+    return limit.rlim_cur;
 }
 
 void handleSignal(int sig) {

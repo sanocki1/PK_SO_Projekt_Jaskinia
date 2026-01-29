@@ -16,17 +16,20 @@
 #define PRIORITY_NORMAL_CHILD 3
 #define PRIORITY_NORMAL_ADULT 4
 
-#define SEM_COUNT 6
+#define SEM_COUNT 9
 #define BRIDGE_SEM_1 0
 #define BRIDGE_SEM_2 1
 #define VISITOR_COUNT_SEM 2
 #define GUIDE_BRIDGE_SEM_1 3
 #define GUIDE_BRIDGE_SEM_2 4
 #define LOG_SEM 5
+#define QUEUE_SEM_1 6
+#define QUEUE_SEM_2 7
+#define TICKET_QUEUE_SEM 8
 
 #define EINTR 4
 #define MAIN_PROCESSES_COUNT 5 // main, cashier, guard, 2 guides
-#define TICKET_MESSAGE_SIZE sizeof(int) * 2
+#define TICKET_MESSAGE_SIZE (sizeof(int) * 2)
 #define QUEUE_MESSAGE_SIZE sizeof(int)
 
 /** @brief Pamięc wspóldzielona */
