@@ -173,7 +173,7 @@ void joinQueue(int queueId, pid_t pid, long priority, int semId, int queueSem) {
     P(semId, queueSem);
     if (msgsnd(queueId, &msg, QUEUE_MESSAGE_SIZE, 0) == -1) {
         perror("msgsnd queue");
-        V(semId, queueSem); // TODO
+        V(semId, queueSem);
         exit(EXIT_FAILURE);
     }
 }

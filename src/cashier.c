@@ -54,13 +54,12 @@ int main(int argc, char* argv[]) {
         if (msgrcv(visitorCashierMsgQueueId, &msg, TICKET_MESSAGE_SIZE,
             0, IPC_NOWAIT) == -1) {
             if (errno == EINTR) continue;
+            if (errno == ENOMSG && stop) break;
             if (errno == ENOMSG) {
                 usleep(100000);
                 continue;
             }
-            if (errno == ENOMSG && stop) break;
             perror("msgrcv");
-            LOG("TUTAJ cashier");
             continue;
         }
         // signals the ticket queue semaphore so another visitor can send a message

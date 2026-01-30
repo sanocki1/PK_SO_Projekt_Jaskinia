@@ -141,7 +141,6 @@ int main(int argc, char* argv[]) {
 }
 
 
-
 int validateParameters() {
     if (OPENING_TIME < 0 || CLOSING_TIME > 24 || OPENING_TIME >= CLOSING_TIME || SECONDS_PER_HOUR < 1 ||
         SECONDS_PER_HOUR <= 0 || VISITOR_FREQUENCY <= 0) {
@@ -205,8 +204,7 @@ pid_t spawnProcess(const char* executable, char* const args[]) {
     pid_t pid = fork();
     if (pid == -1) {
         perror("fork");
-        cleanupResources(visitorCashierMsgQueueId, visitorGuideMsgQueueId1,
-                        visitorGuideMsgQueueId2, state, shmid, semId);
+        cleanupResources();
         return -1;
     }
     if (pid == 0) {

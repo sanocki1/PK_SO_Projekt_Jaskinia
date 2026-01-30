@@ -47,7 +47,7 @@ int main(int argc, char* argv[]) {
     state->closing = 1;
     LOG("Touring is closing!");
 
-    terminateProcesses(cashierPid, guide1Pid, guide2Pid);;
+    terminateProcesses(cashierPid, guide1Pid, guide2Pid);
     deattachSharedMemory(state);
 
     LOG("Finishing...");
