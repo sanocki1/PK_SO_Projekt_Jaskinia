@@ -1,13 +1,13 @@
 /**
 * @file guide.c
-* @brief Proces przewodnika.
+* @brief Guide process.
 *
-* Proces:
-* - obsługuje jedną z tras
-* - pobiera odwiedzających z kolejki komunikatów
-* - dba o obecność co najmniej jednego dorosłego w grupie
-* - synchronizuje przejścia przez most za pomocą semaforów
-* - prowadzi zwiedzanie trasy i wypuszcza grupę po zakończeniu.
+* Process:
+* - handles one of two routes
+* - collects visitors from a message queue
+* - makes sure that at least one adult has entered before running a tour
+* - synchronizes bridge direction
+* - handles touring and making sure that visitors leave after it's over
 */
 #include <signal.h>
 #include <stdio.h>
@@ -21,23 +21,23 @@
 
 volatile sig_atomic_t stop = 0;
 
-/** @brief Odbiera komunikat z kolejki. */
+/** @brief Handles a process termination signal. */
+void handleSignal(int sig);
+
+/** @brief Receives a message queue communication. */
 int receiveMessage(int queueId, QueueMessage* msg, long msgType);
 
-/** @brief Wyszukuje dorosłego zwiedzającego w kolejce. */
+/** @brief Searches for a single adult in a message queue. */
 int findAdult(int queueId, QueueMessage* msg);
 
-/** @brief Wysyła sygnał do pojedynczego zwiedzającego. */
+/** @brief Sends a signal to a specific visitor. */
 void signalVisitor(pid_t visitorPid, int signal);
 
-/** @brief Wysyła sygnał do grupy zwiedzających. */
+/** @brief Sends signals to a group of visitors. */
 void signalVisitors(pid_t* visitors, int count, int signal);
 
-/** @brief Oczekuje na przejście grupy przez most. */
+/** @brief Waits for the entire group of visitors to cross a bridge. */
 void waitForBridgeCrossing(int semId, int bridgeSem, int count);
-
-/** @brief Obsługuje sygnał zakończenia procesu przewodnika. */
-void handleSignal(int sig);
 
 int main(int argc, char* argv[]) {
     int routeCapacity;

@@ -33,7 +33,7 @@
 #define TICKET_MESSAGE_SIZE (sizeof(int) * 2)
 #define QUEUE_MESSAGE_SIZE sizeof(int)
 
-/** @brief Pamięc wspóldzielona */
+/** @brief Shared memory. */
 typedef struct {
     int Tp; // opening time
     int Tk; // closing time
@@ -43,14 +43,14 @@ typedef struct {
     int visitorCount;
 } sharedState;
 
-/** @brief Komunikat wysłany do kasjera */
+/** @brief A message sent to the cashier via a message queue. */
 typedef struct {
     long mtype;
     int age;
     int isRepeat;
 } TicketMessage;
 
-/** @brief Komunikat wysłany do przewodnika */
+/** @brief A message sent to the cashier via a message queue. */
 typedef struct {
     long mtype;
     int pid;

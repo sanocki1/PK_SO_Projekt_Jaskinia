@@ -1,11 +1,11 @@
 /**
 * @file cashier.c
-* @brief Proces kasjera.
+* @brief Cashier process.
 *
-*Proces:
-* - odbiera komunikaty od odwiedzających
-* - oblicza cenę biletu
-* - aktualizuje wspólny stan symulacji
+* Process:
+* - receives messages from visitors
+* - calculates ticket prices
+* - updates shared memory data
 */
 #include <stdio.h>
 #include <sys/msg.h>
@@ -22,10 +22,10 @@ void handleSignal(int sig) {
     if (sig == SIGTERM) stop = 1;
 }
 
-/** @brief Oblicza cenę biletu dla odwiedzającego. */
+/** @brief Calculates ticket pricing based on visitor information. */
 double calculateTicketPrice(int age, int isRepeat);
 
-/** @brief Przetwarza zakup biletu i aktualizuje stan symulacji. */
+/** @brief Processes a ticket and updates shared memory data. */
 void processTicket(sharedState* state, const TicketMessage* msg);
 
 
@@ -63,6 +63,7 @@ int main(int argc, char* argv[]) {
             LOG("TUTAJ cashier");
             continue;
         }
+        // signals the ticket queue semaphore so another visitor can send a message
         V(semId, TICKET_QUEUE_SEM);
         processTicket(state, &msg);
     }

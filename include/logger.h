@@ -28,7 +28,6 @@ void logMessage(const char* color, const char* processName,
 
 void logError(const char* processName, const char* fmt, ...);
 
-// Legacy macros for backward compatibility
 #define LOG(fmt, ...) \
 logMessage(PROCESS_COLOR, PROCESS_NAME, fmt, ##__VA_ARGS__)
 

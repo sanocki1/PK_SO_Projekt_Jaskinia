@@ -27,25 +27,25 @@ int validateParameters();
 /** @brief Returns the maximum allowed visitor count based on system limits. */
 ulong getMaxVisitorCount();
 
-/** @brief Inicjalizuje pamięć współdzieloną. */
+/** @brief Initializes shared memory. */
 void initializeSharedState(sharedState*);
 
-/** @brief Inicjalizuje semafory. */
+/** @brief Initializes semaphores. */
 void initializeSemaphores(int semId);
 
-/** @brief Tworzy nowy proces i uruchamia wskazany program. */
+/** @brief Creates a new process and executes the indicated program. */
 pid_t spawnProcess(const char* executable, char* const args[]);
 
-/** @brief Tworzy wskazaną ilośc procesów zwiedzających */
+/** @brief Creates the indicated number of visitor processes. */
 void spawnVisitorGroup(int groupSize);
 
-/** @brief Czyści dane z IPC */
+/** @brief Cleans up the IPC data. */
 void cleanupResources();
 
-/** @brief Zwraca maksymalną ilość danych zarezerwowanych dla kolejki komunikatów */
+/** @brief Returns the maximum amount of memory space reserved for a message queue. */
 size_t getMaxQueueMessageMemory(int queueId);
 
-/** @brief Obsługuje sygnały zakończenia symulacji. */
+/** @brief Handles simulation termination signals. */
 void handleSignal(int sig);
 
 static int visitorCashierMsgQueueId;
@@ -118,7 +118,7 @@ int main(int argc, char* argv[]) {
 
     LOG("Simulation started. Visitors are arriving...");
 
-    int counter = 10000;
+    int counter = 5000;
     while (counter--) {
         // while (!state->closing) {
         // int groupCount = rand() % MAX_VISITOR_GROUP_SIZE + 1;
@@ -139,6 +139,7 @@ int main(int argc, char* argv[]) {
 
     return 0;
 }
+
 
 
 int validateParameters() {

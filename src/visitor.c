@@ -1,14 +1,14 @@
 /**
 * @file visitor.c
-* @brief Proces odwiedzającego.
+* @brief Visitor process.
 *
-* Proces:
-* - losuje wiek
-* - kupuje bilet
-* - dołącza do kolejki przewodnika
-* - przechodzi most
-* - uczestniczy w zwiedzaniu
-* - opcjonalnie powtarza wizytę
+* Process:
+* - randomizes its age
+* - chooses a route
+* - joins a queue to the path
+* - buys a ticket
+* - crosses a bridge, waits for the tour to end, crosses the bridge back
+* - optionally repeats the tour
 */
 
 #include <stdio.h>
@@ -24,28 +24,28 @@
 volatile sig_atomic_t canProceed;
 volatile sig_atomic_t rejected = 0;
 
-/** @brief Obsługuje sygnały do kontynowania/przerywania wycieczki wysyłane przez prowadzącego */
+/** @brief Handles signals to continue/stop the tour receives from the guide. */
 void handleSignal(int sig);
 
-/** @brief Wybiera trasę do zwiedzania na podstawie wieku i historii wizyt. */
+/** @brief Chooses a route based on age and past tours. */
 int selectRoute(int age, int isRepeat, int previousRoute);
 
-/** @brief Zwraca priorytet do kolejki do jaskini na podstawie wieku i tego czy jest to powtórna wizyta. */
+/** @brief Returns a queue priority based on age and whether it's a repeat visit. */
 long getQueuePriority(int age, int isRepeat);
 
-/** @brief Wysyła wiadomość do kasjera z danymi potrzebnymi do wyceny. */
+/** @brief Sends a message to the cashier with information required for ticket pricing. */
 void buyTicket(int queueId, int age, int isRepeat, int semId);
 
-/** @brief Dołącza do kolejki do jaskini. */
+/** @brief Joins a cave entrance queue. */
 void joinQueue(int queueId, pid_t pid, long priority, int semId, int queueSem);
 
-/** @brief Czeka na sygnał od prowadzącego. */
+/** @brief Waits for a signal from the guide. */
 void waitForSignal(void);
 
-/** @brief Przechodzi przez most, zajmując miejsce na semaforze mostu przez określony czas. */
+/** @brief Crosses the bridge, waiting for bridge semaphore. */
 void crossBridge(int semId, int bridgeSem);
 
-/** @biref Aktualizuje globalną ilość zwiedzających. */
+/** @biref Updates a global visitor count. */
 void updateVisitorCount(sharedState* state, int semId, int delta);
 
 
@@ -173,6 +173,7 @@ void joinQueue(int queueId, pid_t pid, long priority, int semId, int queueSem) {
     P(semId, queueSem);
     if (msgsnd(queueId, &msg, QUEUE_MESSAGE_SIZE, 0) == -1) {
         perror("msgsnd queue");
+        V(semId, queueSem); // TODO
         exit(EXIT_FAILURE);
     }
 }
