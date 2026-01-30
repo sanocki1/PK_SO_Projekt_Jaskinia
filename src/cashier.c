@@ -54,6 +54,7 @@ int main(int argc, char* argv[]) {
             0, 0) == -1) {
             if (errno == EINTR) continue;
             perror("msgrcv");
+            LOG("TUTAJ cashier");
             continue;
         }
         V(semId, TICKET_QUEUE_SEM);

@@ -10,7 +10,7 @@
 #define VISITOR_GUIDE_QUEUE_KEY_ID_2 5
 
 // children before adults, so after 1 adult is found queue fills up with
-// as many children as possible so even less chance of cloging the queue
+// as many children as possible so even smaller chance of clogging the queue
 #define PRIORITY_HIGH_CHILD 1
 #define PRIORITY_HIGH_ADULT 2
 #define PRIORITY_NORMAL_CHILD 3

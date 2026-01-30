@@ -42,8 +42,10 @@ void spawnVisitorGroup(int groupSize);
 /** @brief Czyści dane z IPC */
 void cleanupResources();
 
-size_t getMaxQueueMessageMemory();
+/** @brief Zwraca maksymalną ilość danych zarezerwowanych dla kolejki komunikatów */
+size_t getMaxQueueMessageMemory(int queueId);
 
+/** @brief Obsługuje sygnały zakończenia symulacji. */
 void handleSignal(int sig);
 
 static int visitorCashierMsgQueueId;
@@ -76,13 +78,7 @@ int main(int argc, char* argv[]) {
     visitorGuideMsgQueueId1 = createMsgQueue(VISITOR_GUIDE_QUEUE_KEY_ID_1);
     visitorGuideMsgQueueId2 = createMsgQueue(VISITOR_GUIDE_QUEUE_KEY_ID_2);
 
-    // get maximum queue size for overflow protection
-    struct msqid_ds queueInfo;
-    if (msgctl(visitorCashierMsgQueueId, IPC_STAT, &queueInfo) == -1) {
-        perror("msgctl cashier queue");
-        return EXIT_FAILURE;
-    }
-    maxQueueMemory = queueInfo.msg_qbytes;
+    maxQueueMemory = getMaxQueueMessageMemory(visitorCashierMsgQueueId);
 
     semId = createSemaphore(SEMAPHORE_KEY_ID, SEM_COUNT);
     initializeSemaphores(semId);
@@ -102,7 +98,6 @@ int main(int argc, char* argv[]) {
     initLogger(semId);
     LOG("I'm the main process!");
     LOG("Startup parameters have been initialized.");
-    LOG("%d",maxQueueMemory/TICKET_MESSAGE_SIZE);
 
     char cashierPidStr[16], guide1PidStr[16], guide2PidStr[16];
     char* cashierArgs[] = {"cashier", NULL};
@@ -123,8 +118,8 @@ int main(int argc, char* argv[]) {
 
     LOG("Simulation started. Visitors are arriving...");
 
-    int licznik = 10000;
-    while (licznik--) {
+    int counter = 10000;
+    while (counter--) {
         // while (!state->closing) {
         // int groupCount = rand() % MAX_VISITOR_GROUP_SIZE + 1;
         int groupCount = 1;
@@ -237,13 +232,13 @@ void cleanupResources() {
     destroySemaphore(semId);
 }
 
-size_t getMaxQueueMessageMemory() {
-    struct rlimit limit;
-    if (getrlimit(RLIMIT_MSGQUEUE, &limit) == -1) {
-        perror("getrlimit RLIMIT_MSGQUEUE");
-        return 0;
+size_t getMaxQueueMessageMemory(int queueId) {
+    struct msqid_ds queueInfo;
+    if (msgctl(queueId, IPC_STAT, &queueInfo) == -1) {
+        perror("msgctl IPC_STAT queue");
+        exit(EXIT_FAILURE);
     }
-    return limit.rlim_cur;
+    return queueInfo.msg_qbytes;
 }
 
 void handleSignal(int sig) {

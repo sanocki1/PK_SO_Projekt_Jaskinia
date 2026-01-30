@@ -17,6 +17,7 @@
 #include <sys/sem.h>
 #include <sys/shm.h>
 
+
 /** @brief Tworzy unikalny klucz wykorzystywany w IPC. */
 key_t generateKey(int id) {
     key_t key = ftok(".", id);

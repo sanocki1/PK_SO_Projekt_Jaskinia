@@ -19,11 +19,7 @@
 #include <sys/msg.h>
 #include "config.h"
 
-
 volatile sig_atomic_t stop = 0;
-void handleSignal(int sig) {
-    if (sig == SIGTERM) stop = 1;
-}
 
 /** @brief Odbiera komunikat z kolejki. */
 int receiveMessage(int queueId, QueueMessage* msg, long msgType);
@@ -39,6 +35,9 @@ void signalVisitors(pid_t* visitors, int count, int signal);
 
 /** @brief Oczekuje na przejście grupy przez most. */
 void waitForBridgeCrossing(int semId, int bridgeSem, int count);
+
+/** @brief Obsługuje sygnał zakończenia procesu przewodnika. */
+void handleSignal(int sig);
 
 int main(int argc, char* argv[]) {
     int routeCapacity;
@@ -169,4 +168,8 @@ void signalVisitors(pid_t* visitors, int count, int signal) {
     for (int i = 0; i < count; i++) {
         signalVisitor(visitors[i], signal);
     }
+}
+
+void handleSignal(int sig) {
+    if (sig == SIGTERM) stop = 1;
 }
