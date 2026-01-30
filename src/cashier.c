@@ -48,11 +48,17 @@ int main(int argc, char* argv[]) {
 
     LOG("I'm the cashier!");
 
-    while (!stop) {
+    while (!stop || state->visitorCount) {
         TicketMessage msg;
+        // checks for messages, if received processes it, otherwise tries again to not block at the program end
         if (msgrcv(visitorCashierMsgQueueId, &msg, TICKET_MESSAGE_SIZE,
-            0, 0) == -1) {
+            0, IPC_NOWAIT) == -1) {
             if (errno == EINTR) continue;
+            if (errno == ENOMSG) {
+                usleep(100000);
+                continue;
+            }
+            if (errno == ENOMSG && stop) break;
             perror("msgrcv");
             LOG("TUTAJ cashier");
             continue;

@@ -164,7 +164,6 @@ void buyTicket(int queueId, int age, int isRepeat, int semId) {
         perror("msgsnd ticket");
         exit(EXIT_FAILURE);
     }
-    // V(semId, TICKET_QUEUE_SEM);
 }
 
 void joinQueue(int queueId, pid_t pid, long priority, int semId, int queueSem) {
@@ -176,7 +175,6 @@ void joinQueue(int queueId, pid_t pid, long priority, int semId, int queueSem) {
         perror("msgsnd queue");
         exit(EXIT_FAILURE);
     }
-    // V(semId, queueSem);
 }
 
 void waitForSignal(void) {

@@ -28,6 +28,7 @@
 #define TICKET_QUEUE_SEM 8
 
 #define EINTR 4
+#define ENOMSG 42
 #define MAIN_PROCESSES_COUNT 5 // main, cashier, guard, 2 guides
 #define TICKET_MESSAGE_SIZE (sizeof(int) * 2)
 #define QUEUE_MESSAGE_SIZE sizeof(int)

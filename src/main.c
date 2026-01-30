@@ -1,12 +1,12 @@
 /**
 * @file main.c
-* @brief Główny proces symulacji jaskini.
+* @brief Main process of the cave simulation.
 *
-* Odpowiada za:
-* - inicjalizację pamięci współdzielonej, semaforów i kolejek komunikatów
-* - uruchomienie procesów: kasjera, strażnika, przewodników i zwiedzających
-* - generowanie grup zwiedzających
-* - sprzątanie zasobów IPC po zakończeniu symulacji
+* Responsible for:
+* - initialization of sharded memory, semaphores, and message queues
+* - starting up cashier, guard, and guides processes
+* - generation of new visitor processes
+* - IPC cleanup after simulation conclusion
 */
 #include <errno.h>
 #include <stdio.h>
@@ -21,10 +21,10 @@
 #include "logger.h"
 #include "utils.h"
 
-/** @brief Sprawdza poprawność parametrów symulacji. */
+/** @brief Verifies initial parameters of the simulation (config.h). */
 int validateParameters();
 
-/** @brief Oblicza maksymalną liczbę odwiedzających możliwą do obsługi. */
+/** @brief Returns the maximum allowed visitor count based on system limits. */
 ulong getMaxVisitorCount();
 
 /** @brief Inicjalizuje pamięć współdzieloną. */
