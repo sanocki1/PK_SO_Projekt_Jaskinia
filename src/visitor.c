@@ -162,6 +162,7 @@ void buyTicket(int queueId, int age, int isRepeat, int semId) {
     P(semId, TICKET_QUEUE_SEM);
     if (msgsnd(queueId, &msg, TICKET_MESSAGE_SIZE, 0) == -1) {
         perror("msgsnd ticket");
+        V(semId, TICKET_QUEUE_SEM);
         exit(EXIT_FAILURE);
     }
 }
@@ -180,7 +181,7 @@ void joinQueue(int queueId, pid_t pid, long priority, int semId, int queueSem) {
 
 void waitForSignal(void) {
     while (!canProceed && !rejected) {
-        pause();
+        sleep(1);
     }
 }
 
