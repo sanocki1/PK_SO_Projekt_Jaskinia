@@ -118,16 +118,16 @@ int main(int argc, char* argv[]) {
 
     LOG("Simulation started. Visitors are arriving...");
 
-    int counter = 5000;
-    while (counter--) {
-        // while (!state->closing) {
-        // int groupCount = rand() % MAX_VISITOR_GROUP_SIZE + 1;
-        int groupCount = 1;
+    // int counter = 5000;
+    // while (counter--) {
+        while (!state->closing) {
+        int groupCount = rand() % MAX_VISITOR_GROUP_SIZE + 1;
+        // int groupCount = 1;
         if (state->visitorCount + groupCount <= maxVisitorCount) {
             LOG("Visitor group of size %d arrived", groupCount);
             spawnVisitorGroup(groupCount);
         }
-        // sleep(VISITOR_FREQUENCY);
+        sleep(VISITOR_FREQUENCY);
         // }
     }
 

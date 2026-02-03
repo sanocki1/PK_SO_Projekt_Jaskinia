@@ -179,7 +179,7 @@ void joinQueue(int queueId, pid_t pid, long priority, int semId, int queueSem) {
     }
 }
 
-void waitForSignal(void) {
+void waitForSignal() {
     while (!canProceed && !rejected) {
         sleep(1);
     }
